@@ -9,19 +9,25 @@ namespace OpenBve {
 		// static objects
 		internal class StaticObject : UnifiedObject {
 			internal World.Mesh Mesh;
-//			internal int RendererIndex;
+			/// <summary>The index to the Renderer.Object array, plus 1. The value of zero represents that the object is not currently shown by the renderer.</summary>
+			internal int RendererIndex;
+			/// <summary>The starting track position, for static objects only.</summary>
 			internal float StartingDistance;
+			/// <summary>The ending track position, for static objects only.</summary>
 			internal float EndingDistance;
-			internal byte Dynamic;
+			/// <summary>The block mod group, for static objects only.</summary>
+			internal short GroupIndex;
+			/// <summary>Whether the object is dynamic, i.e. not static.</summary>
+			internal bool Dynamic;
 		}
 		internal static StaticObject[] Objects = new StaticObject[16];
-//		internal static int ObjectsUsed;
+		internal static int ObjectsUsed;
 //		internal static int[] ObjectsSortedByStart = new int[] { };
 //		internal static int[] ObjectsSortedByEnd = new int[] { };
 //		internal static int ObjectsSortedByStartPointer = 0;
 //		internal static int ObjectsSortedByEndPointer = 0;
 //		internal static double LastUpdatedTrackPosition = 0.0;
-//
+
 		// animated objects
 		internal class Damping {
 			internal double NaturalFrequency;
@@ -91,13 +97,14 @@ namespace OpenBve {
 			internal FunctionScripts.FunctionScript TextureShiftXFunction;
 			internal FunctionScripts.FunctionScript TextureShiftYFunction;
 			internal bool LEDClockwiseWinding;
-			internal double LEDMaximumAngle;
+			internal double LEDInitialAngle;
+			internal double LEDLastAngle;
+			/// <summary>If LEDFunction is used, an array of five vectors representing the bottom-left, up-left, up-right, bottom-right and center coordinates of the LED square, or a null reference otherwise.</summary>
+			internal World.Vector3D[] LEDVectors;
 			internal FunctionScripts.FunctionScript LEDFunction;
-			// misc
 			internal double RefreshRate;
 			internal double CurrentTrackZOffset;
-			internal double TimeLastUpdated;
-			internal double TimeNextUpdated;
+			internal double SecondsSinceLastUpdate;
 			internal int ObjectIndex;
 			// methods
 			internal bool IsFreeOfFunctions() {
@@ -137,12 +144,20 @@ namespace OpenBve {
 				Result.TextureShiftXFunction = this.TextureShiftXFunction == null ? null : this.TextureShiftXFunction.Clone();
 				Result.TextureShiftYFunction = this.TextureShiftYFunction == null ? null : this.TextureShiftYFunction.Clone();
 				Result.LEDClockwiseWinding = this.LEDClockwiseWinding;
-				Result.LEDMaximumAngle = this.LEDMaximumAngle;
+				Result.LEDInitialAngle = this.LEDInitialAngle;
+				Result.LEDLastAngle = this.LEDLastAngle;
+				if (this.LEDVectors != null) {
+					Result.LEDVectors = new World.Vector3D[this.LEDVectors.Length];
+					for (int i = 0; i < this.LEDVectors.Length; i++) {
+						Result.LEDVectors[i] = this.LEDVectors[i];
+					}
+				} else {
+					Result.LEDVectors = null;
+				}
 				Result.LEDFunction = this.LEDFunction == null ? null : this.LEDFunction.Clone();
 				Result.RefreshRate = this.RefreshRate;
 				Result.CurrentTrackZOffset = 0.0;
-				Result.TimeNextUpdated = 0.0;
-				Result.TimeLastUpdated = 0.0;
+				Result.SecondsSinceLastUpdate = 0.0;
 				Result.ObjectIndex = -1;
 				return Result;
 			}
@@ -181,16 +196,20 @@ namespace OpenBve {
 //			}
 //			Object.CurrentState = StateIndex;
 //			if (Show) {
-//				Renderer.ShowObject(i, Overlay);
+//				if (Overlay) {
+//					Renderer.ShowObject(i, Renderer.ObjectType.Overlay);
+//				} else {
+//					Renderer.ShowObject(i, Renderer.ObjectType.Dynamic);
+//				}
 //			}
 //		}
-//
+
 //		internal static void UpdateAnimatedObject(ref AnimatedObject Object, bool IsPartOfTrain, TrainManager.Train Train, int CarIndex, int SectionIndex, double TrackPosition, World.Vector3D Position, World.Vector3D Direction, World.Vector3D Up, World.Vector3D Side, bool Overlay, bool UpdateFunctions, bool Show, double TimeElapsed) {
 //			int s = Object.CurrentState;
 //			int i = Object.ObjectIndex;
 //			// state change
 //			if (Object.StateFunction != null & UpdateFunctions) {
-//				double sd = Object.StateFunction.Perform(Train, CarIndex, Position, TrackPosition, SectionIndex, TimeElapsed);
+//				double sd = Object.StateFunction.Perform(Train, CarIndex, Position, TrackPosition, SectionIndex, IsPartOfTrain, TimeElapsed, Object.CurrentState);
 //				int si = (int)Math.Round(sd);
 //				int sn = Object.States.Length;
 //				if (si < 0 | si >= sn) si = -1;
@@ -204,7 +223,7 @@ namespace OpenBve {
 //			if (Object.TranslateXFunction != null) {
 //				double x;
 //				if (UpdateFunctions) {
-//					x = Object.TranslateXFunction.Perform(Train, CarIndex, Position, TrackPosition, SectionIndex, TimeElapsed);
+//					x = Object.TranslateXFunction.Perform(Train, CarIndex, Position, TrackPosition, SectionIndex, IsPartOfTrain, TimeElapsed, Object.CurrentState);
 //				} else  {
 //					x = Object.TranslateXFunction.LastResult;
 //				}
@@ -217,7 +236,7 @@ namespace OpenBve {
 //			if (Object.TranslateYFunction != null) {
 //				double y;
 //				if (UpdateFunctions) {
-//					y = Object.TranslateYFunction.Perform(Train, CarIndex, Position, TrackPosition, SectionIndex, TimeElapsed);
+//					y = Object.TranslateYFunction.Perform(Train, CarIndex, Position, TrackPosition, SectionIndex, IsPartOfTrain, TimeElapsed, Object.CurrentState);
 //				} else {
 //					y = Object.TranslateYFunction.LastResult;
 //				}
@@ -230,7 +249,7 @@ namespace OpenBve {
 //			if (Object.TranslateZFunction != null) {
 //				double z;
 //				if (UpdateFunctions) {
-//					z = Object.TranslateZFunction.Perform(Train, CarIndex, Position, TrackPosition, SectionIndex, TimeElapsed);
+//					z = Object.TranslateZFunction.Perform(Train, CarIndex, Position, TrackPosition, SectionIndex, IsPartOfTrain, TimeElapsed, Object.CurrentState);
 //				} else {
 //					z = Object.TranslateZFunction.LastResult;
 //				}
@@ -248,7 +267,7 @@ namespace OpenBve {
 //			if (rotateX) {
 //				double a;
 //				if (UpdateFunctions) {
-//					a = Object.RotateXFunction.Perform(Train, CarIndex, Position, TrackPosition, SectionIndex, TimeElapsed);
+//					a = Object.RotateXFunction.Perform(Train, CarIndex, Position, TrackPosition, SectionIndex, IsPartOfTrain, TimeElapsed, Object.CurrentState);
 //				} else {
 //					a = Object.RotateXFunction.LastResult;
 //				}
@@ -262,7 +281,7 @@ namespace OpenBve {
 //			if (rotateY) {
 //				double a;
 //				if (UpdateFunctions) {
-//					a = Object.RotateYFunction.Perform(Train, CarIndex, Position, TrackPosition, SectionIndex, TimeElapsed);
+//					a = Object.RotateYFunction.Perform(Train, CarIndex, Position, TrackPosition, SectionIndex, IsPartOfTrain, TimeElapsed, Object.CurrentState);
 //				} else {
 //					a = Object.RotateYFunction.LastResult;
 //				}
@@ -276,7 +295,7 @@ namespace OpenBve {
 //			if (rotateZ) {
 //				double a;
 //				if (UpdateFunctions) {
-//					a = Object.RotateZFunction.Perform(Train, CarIndex, Position, TrackPosition, SectionIndex, TimeElapsed);
+//					a = Object.RotateZFunction.Perform(Train, CarIndex, Position, TrackPosition, SectionIndex, IsPartOfTrain, TimeElapsed, Object.CurrentState);
 //				} else {
 //					a = Object.RotateZFunction.LastResult;
 //				}
@@ -294,7 +313,7 @@ namespace OpenBve {
 //					ObjectManager.Objects[i].Mesh.Vertices[k].TextureCoordinates = Object.States[s].Object.Mesh.Vertices[k].TextureCoordinates;
 //				}
 //				if (shiftx) {
-//					double x = Object.TextureShiftXFunction.Perform(Train, CarIndex, Position, TrackPosition, SectionIndex, TimeElapsed);
+//					double x = Object.TextureShiftXFunction.Perform(Train, CarIndex, Position, TrackPosition, SectionIndex, IsPartOfTrain, TimeElapsed, Object.CurrentState);
 //					x -= Math.Floor(x);
 //					for (int k = 0; k < ObjectManager.Objects[i].Mesh.Vertices.Length; k++) {
 //						ObjectManager.Objects[i].Mesh.Vertices[k].TextureCoordinates.X += (float)(x * Object.TextureShiftXDirection.X);
@@ -302,7 +321,7 @@ namespace OpenBve {
 //					}
 //				}
 //				if (shifty) {
-//					double y = Object.TextureShiftYFunction.Perform(Train, CarIndex, Position, TrackPosition, SectionIndex, TimeElapsed);
+//					double y = Object.TextureShiftYFunction.Perform(Train, CarIndex, Position, TrackPosition, SectionIndex, IsPartOfTrain, TimeElapsed, Object.CurrentState);
 //					y -= Math.Floor(y);
 //					for (int k = 0; k < ObjectManager.Objects[i].Mesh.Vertices.Length; k++) {
 //						ObjectManager.Objects[i].Mesh.Vertices[k].TextureCoordinates.X += (float)(y * Object.TextureShiftYDirection.X);
@@ -315,7 +334,8 @@ namespace OpenBve {
 //			double ledangle;
 //			if (led) {
 //				if (UpdateFunctions) {
-//					ledangle = Object.LEDFunction.Perform(Train, CarIndex, Position, TrackPosition, SectionIndex, TimeElapsed);
+//					// double lastangle = Object.LEDFunction.LastResult;
+//					ledangle = Object.LEDFunction.Perform(Train, CarIndex, Position, TrackPosition, SectionIndex, IsPartOfTrain, TimeElapsed, Object.CurrentState);
 //				} else {
 //					ledangle = Object.LEDFunction.LastResult;
 //				}
@@ -332,136 +352,187 @@ namespace OpenBve {
 //			}
 //			// led
 //			if (led) {
-//				double max = Object.LEDMaximumAngle;
-//				for (int j = 0; j < 5; j++) {
-//					double pos1 = 0.0;
-//					double pos2 = 1.0;
-//					switch (j) {
-//						case 0:
-//							if (ledangle <= -0.5 * Math.PI) {
-//								pos1 = 0.5;
-//							} else if (ledangle >= 0.5 * Math.PI) {
-//								pos1 = 1.0;
-//							} else {
-//								pos1 = 0.5 * Math.Tan(ledangle - 2.0 * Math.PI) + 0.5;
-//								if (pos1 < 0.5) pos1 = 0.5;
-//								else if (pos1 > 1.0) pos1 = 1.0;
-//							}
-//							if (max <= -0.5 * Math.PI) {
-//								pos2 = 0.5;
-//							} else if (max >= 0.5 * Math.PI) {
-//								pos2 = 1.0;
-//							} else {
-//								pos2 = 0.5 * Math.Tan(max - 2.0 * Math.PI) + 0.5;
-//								if (pos2 < 0.5) pos2 = 0.5;
-//								else if (pos2 > 1.0) pos2 = 1.0;
-//							}
-//							break;
-//						case 1:
-//							if (ledangle <= 0.0) {
-//								pos1 = 0.0;
-//							} else if (ledangle >= Math.PI) {
-//								pos1 = 1.0;
-//							} else {
-//								pos1 = 0.5 * Math.Tan(ledangle - 0.5 * Math.PI) + 0.5;
-//								if (pos1 < 0.0) pos1 = 0.0;
-//								else if (pos1 > 1.0) pos1 = 1.0;
-//							}
-//							if (max <= 0.0) {
-//								pos2 = 0.0;
-//							} else if (max >= Math.PI) {
-//								pos2 = 1.0;
-//							} else {
-//								pos2 = 0.5 * Math.Tan(max - 0.5 * Math.PI) + 0.5;
-//								if (pos2 < 0.0) pos2 = 0.0;
-//								else if (pos2 > 1.0) pos2 = 1.0;
-//							}
-//							break;
-//						case 2:
-//							if (ledangle <= 0.5 * Math.PI) {
-//								pos1 = 0.0;
-//							} else if (ledangle >= 1.5 * Math.PI) {
-//								pos1 = 1.0;
-//							} else {
-//								pos1 = 0.5 * Math.Tan(ledangle - Math.PI) + 0.5;
-//								if (pos1 < 0.0) pos1 = 0.0;
-//								else if (pos1 > 1.0) pos1 = 1.0;
-//							}
-//							if (max <= 0.5 * Math.PI) {
-//								pos2 = 0.0;
-//							} else if (max >= 1.5 * Math.PI) {
-//								pos2 = 1.0;
-//							} else {
-//								pos2 = 0.5 * Math.Tan(max - Math.PI) + 0.5;
-//								if (pos2 < 0.0) pos2 = 0.0;
-//								else if (pos2 > 1.0) pos2 = 1.0;
-//							}
-//							break;
-//						case 3:
-//							if (ledangle <= Math.PI) {
-//								pos1 = 0.0;
-//							} else if (ledangle >= 2.0 * Math.PI) {
-//								pos1 = 1.0;
-//							} else {
-//								pos1 = 0.5 * Math.Tan(ledangle - 1.5 * Math.PI) + 0.5;
-//								if (pos1 < 0.0) pos1 = 0.0;
-//								else if (pos1 > 1.0) pos1 = 1.0;
-//							}
-//							if (max <= Math.PI) {
-//								pos2 = 0.0;
-//							} else if (max >= 2.0 * Math.PI) {
-//								pos2 = 1.0;
-//							} else {
-//								pos2 = 0.5 * Math.Tan(max - 1.5 * Math.PI) + 0.5;
-//								if (pos2 < 0.0) pos2 = 0.0;
-//								else if (pos2 > 1.0) pos2 = 1.0;
-//							}
-//							break;
-//						case 4:
-//							if (ledangle <= 1.5 * Math.PI) {
-//								pos1 = 0.0;
-//							} else if (ledangle >= 2.5 * Math.PI) {
-//								pos1 = 0.5;
-//							} else {
-//								pos1 = 0.5 * Math.Tan(ledangle - 2.0 * Math.PI) + 0.5;
-//								if (pos1 < 0.0) pos1 = 0.0;
-//								else if (pos1 > 0.5) pos1 = 0.5;
-//							}
-//							if (max <= 1.5 * Math.PI) {
-//								pos2 = 0.0;
-//							} else if (max >= 2.5 * Math.PI) {
-//								pos2 = 0.5;
-//							} else {
-//								pos2 = 0.5 * Math.Tan(max - 2.0 * Math.PI) + 0.5;
-//								if (pos2 < 0.0) pos2 = 0.0;
-//								else if (pos2 > 0.5) pos2 = 0.5;
-//							}
-//							break;
+//				/*
+//				 * Edges:         Vertices:
+//				 * 0 - bottom     0 - bottom-left
+//				 * 1 - left       1 - top-left
+//				 * 2 - top        2 - top-right
+//				 * 3 - right      3 - bottom-right
+//				 *                4 - center
+//				 * */
+//				int v = 1;
+//				if (Object.LEDClockwiseWinding) {
+//					/* winding is clockwise*/
+//					if (ledangle < Object.LEDInitialAngle) {
+//						ledangle = Object.LEDInitialAngle;
 //					}
-//					int k = 2 * j + 1;
-//					double cpos1 = 1.0 - pos1;
-//					double cpos2 = 1.0 - pos2;
-//					double x0 = Object.States[s].Object.Mesh.Vertices[k].Coordinates.X;
-//					double y0 = Object.States[s].Object.Mesh.Vertices[k].Coordinates.Y;
-//					double z0 = Object.States[s].Object.Mesh.Vertices[k].Coordinates.Z;
-//					double x1 = Object.States[s].Object.Mesh.Vertices[k + 1].Coordinates.X;
-//					double y1 = Object.States[s].Object.Mesh.Vertices[k + 1].Coordinates.Y;
-//					double z1 = Object.States[s].Object.Mesh.Vertices[k + 1].Coordinates.Z;
-//					if (Object.LEDClockwiseWinding) {
-//						ObjectManager.Objects[i].Mesh.Vertices[k].Coordinates.X = x0 * cpos1 + x1 * pos1;
-//						ObjectManager.Objects[i].Mesh.Vertices[k].Coordinates.Y = y0 * cpos1 + y1 * pos1;
-//						ObjectManager.Objects[i].Mesh.Vertices[k].Coordinates.Z = z0 * cpos1 + z1 * pos1;
-//						ObjectManager.Objects[i].Mesh.Vertices[k + 1].Coordinates.X = x0 * cpos2 + x1 * pos2;
-//						ObjectManager.Objects[i].Mesh.Vertices[k + 1].Coordinates.Y = y0 * cpos2 + y1 * pos2;
-//						ObjectManager.Objects[i].Mesh.Vertices[k + 1].Coordinates.Z = z0 * cpos2 + z1 * pos2;
-//					} else {
-//						ObjectManager.Objects[i].Mesh.Vertices[k].Coordinates.X = x0 * cpos2 + x1 * pos2;
-//						ObjectManager.Objects[i].Mesh.Vertices[k].Coordinates.Y = y0 * cpos2 + y1 * pos2;
-//						ObjectManager.Objects[i].Mesh.Vertices[k].Coordinates.Z = z0 * cpos2 + z1 * pos2;
-//						ObjectManager.Objects[i].Mesh.Vertices[k + 1].Coordinates.X = x0 * cpos1 + x1 * pos1;
-//						ObjectManager.Objects[i].Mesh.Vertices[k + 1].Coordinates.Y = y0 * cpos1 + y1 * pos1;
-//						ObjectManager.Objects[i].Mesh.Vertices[k + 1].Coordinates.Z = z0 * cpos1 + z1 * pos1;
+//					if (ledangle < Object.LEDLastAngle) {
+//						double currentEdgeFloat = Math.Floor(0.636619772367582 * (ledangle + 0.785398163397449));
+//						int currentEdge = ((int)currentEdgeFloat % 4 + 4) % 4;
+//						double lastEdgeFloat = Math.Floor(0.636619772367582 * (Object.LEDLastAngle + 0.785398163397449));
+//						int lastEdge = ((int)lastEdgeFloat % 4 + 4) % 4;
+//						if (lastEdge < currentEdge | lastEdge == currentEdge & Math.Abs(currentEdgeFloat - lastEdgeFloat) > 2.0) {
+//							lastEdge += 4;
+//						}
+//						if (currentEdge == lastEdge) {
+//							/* current angle to last angle */
+//							{
+//								double t = 0.5 + (0.636619772367582 * ledangle) - currentEdgeFloat;
+//								if (t < 0.0) {
+//									t = 0.0;
+//								} else if (t > 1.0) {
+//									t = 1.0;
+//								}
+//								t = 0.5 * (1.0 - Math.Tan(0.25 * (Math.PI - 2.0 * Math.PI * t)));
+//								double cx = (1.0 - t) * Object.LEDVectors[(currentEdge + 3) % 4].X + t * Object.LEDVectors[currentEdge].X;
+//								double cy = (1.0 - t) * Object.LEDVectors[(currentEdge + 3) % 4].Y + t * Object.LEDVectors[currentEdge].Y;
+//								double cz = (1.0 - t) * Object.LEDVectors[(currentEdge + 3) % 4].Z + t * Object.LEDVectors[currentEdge].Z;
+//								Object.States[s].Object.Mesh.Vertices[v].Coordinates = new World.Vector3D(cx, cy, cz);
+//								v++;
+//							}
+//							{
+//								double t = 0.5 + (0.636619772367582 * Object.LEDLastAngle) - lastEdgeFloat;
+//								if (t < 0.0) {
+//									t = 0.0;
+//								} else if (t > 1.0) {
+//									t = 1.0;
+//								}
+//								t = 0.5 * (1.0 - Math.Tan(0.25 * (Math.PI - 2.0 * Math.PI * t)));
+//								double lx = (1.0 - t) * Object.LEDVectors[(lastEdge + 3) % 4].X + t * Object.LEDVectors[lastEdge].X;
+//								double ly = (1.0 - t) * Object.LEDVectors[(lastEdge + 3) % 4].Y + t * Object.LEDVectors[lastEdge].Y;
+//								double lz = (1.0 - t) * Object.LEDVectors[(lastEdge + 3) % 4].Z + t * Object.LEDVectors[lastEdge].Z;
+//								Object.States[s].Object.Mesh.Vertices[v].Coordinates = new World.Vector3D(lx, ly, lz);
+//								v++;
+//							}
+//						} else {
+//							{
+//								/* current angle to square vertex */
+//								double t = 0.5 + (0.636619772367582 * ledangle) - currentEdgeFloat;
+//								if (t < 0.0) {
+//									t = 0.0;
+//								} else if (t > 1.0) {
+//									t = 1.0;
+//								}
+//								t = 0.5 * (1.0 - Math.Tan(0.25 * (Math.PI - 2.0 * Math.PI * t)));
+//								double cx = (1.0 - t) * Object.LEDVectors[(currentEdge + 3) % 4].X + t * Object.LEDVectors[currentEdge].X;
+//								double cy = (1.0 - t) * Object.LEDVectors[(currentEdge + 3) % 4].Y + t * Object.LEDVectors[currentEdge].Y;
+//								double cz = (1.0 - t) * Object.LEDVectors[(currentEdge + 3) % 4].Z + t * Object.LEDVectors[currentEdge].Z;
+//								Object.States[s].Object.Mesh.Vertices[v + 0].Coordinates = new World.Vector3D(cx, cy, cz);
+//								Object.States[s].Object.Mesh.Vertices[v + 1].Coordinates = Object.LEDVectors[currentEdge];
+//								v += 2;
+//							}
+//							for (int j = currentEdge + 1; j < lastEdge; j++) {
+//								/* square-vertex to square-vertex */
+//								Object.States[s].Object.Mesh.Vertices[v + 0].Coordinates = Object.LEDVectors[(j + 3) % 4];
+//								Object.States[s].Object.Mesh.Vertices[v + 1].Coordinates = Object.LEDVectors[j % 4];
+//								v += 2;
+//							}
+//							{
+//								/* square vertex to last angle */
+//								double t = 0.5 + (0.636619772367582 * Object.LEDLastAngle) - lastEdgeFloat;
+//								if (t < 0.0) {
+//									t = 0.0;
+//								} else if (t > 1.0) {
+//									t = 1.0;
+//								}
+//								t = 0.5 * (1.0 - Math.Tan(0.25 * (Math.PI - 2.0 * Math.PI * t)));
+//								double lx = (1.0 - t) * Object.LEDVectors[(lastEdge + 3) % 4].X + t * Object.LEDVectors[lastEdge % 4].X;
+//								double ly = (1.0 - t) * Object.LEDVectors[(lastEdge + 3) % 4].Y + t * Object.LEDVectors[lastEdge % 4].Y;
+//								double lz = (1.0 - t) * Object.LEDVectors[(lastEdge + 3) % 4].Z + t * Object.LEDVectors[lastEdge % 4].Z;
+//								Object.States[s].Object.Mesh.Vertices[v + 0].Coordinates = Object.LEDVectors[(lastEdge + 3) % 4];
+//								Object.States[s].Object.Mesh.Vertices[v + 1].Coordinates = new World.Vector3D(lx, ly, lz);
+//								v += 2;
+//							}
+//						}
 //					}
+//				} else {
+//					/* winding is counter-clockwise*/
+//					if (ledangle > Object.LEDInitialAngle) {
+//						ledangle = Object.LEDInitialAngle;
+//					}
+//					if (ledangle > Object.LEDLastAngle) {
+//						double currentEdgeFloat = Math.Floor(0.636619772367582 * (ledangle + 0.785398163397449));
+//						int currentEdge = ((int)currentEdgeFloat % 4 + 4) % 4;
+//						double lastEdgeFloat = Math.Floor(0.636619772367582 * (Object.LEDLastAngle + 0.785398163397449));
+//						int lastEdge = ((int)lastEdgeFloat % 4 + 4) % 4;
+//						if (currentEdge < lastEdge | lastEdge == currentEdge & Math.Abs(currentEdgeFloat - lastEdgeFloat) > 2.0) {
+//							currentEdge += 4;
+//						}
+//						if (currentEdge == lastEdge) {
+//							/* current angle to last angle */
+//							{
+//								double t = 0.5 + (0.636619772367582 * Object.LEDLastAngle) - lastEdgeFloat;
+//								if (t < 0.0) {
+//									t = 0.0;
+//								} else if (t > 1.0) {
+//									t = 1.0;
+//								}
+//								t = 0.5 * (1.0 - Math.Tan(0.25 * (Math.PI - 2.0 * Math.PI * t)));
+//								double lx = (1.0 - t) * Object.LEDVectors[(lastEdge + 3) % 4].X + t * Object.LEDVectors[lastEdge].X;
+//								double ly = (1.0 - t) * Object.LEDVectors[(lastEdge + 3) % 4].Y + t * Object.LEDVectors[lastEdge].Y;
+//								double lz = (1.0 - t) * Object.LEDVectors[(lastEdge + 3) % 4].Z + t * Object.LEDVectors[lastEdge].Z;
+//								Object.States[s].Object.Mesh.Vertices[v].Coordinates = new World.Vector3D(lx, ly, lz);
+//								v++;
+//							}
+//							{
+//								double t = 0.5 + (0.636619772367582 * ledangle) - currentEdgeFloat;
+//								if (t < 0.0) {
+//									t = 0.0;
+//								} else if (t > 1.0) {
+//									t = 1.0;
+//								}
+//								t = t - Math.Floor(t);
+//								t = 0.5 * (1.0 - Math.Tan(0.25 * (Math.PI - 2.0 * Math.PI * t)));
+//								double cx = (1.0 - t) * Object.LEDVectors[(currentEdge + 3) % 4].X + t * Object.LEDVectors[currentEdge].X;
+//								double cy = (1.0 - t) * Object.LEDVectors[(currentEdge + 3) % 4].Y + t * Object.LEDVectors[currentEdge].Y;
+//								double cz = (1.0 - t) * Object.LEDVectors[(currentEdge + 3) % 4].Z + t * Object.LEDVectors[currentEdge].Z;
+//								Object.States[s].Object.Mesh.Vertices[v].Coordinates = new World.Vector3D(cx, cy, cz);
+//								v++;
+//							}
+//						} else {
+//							{
+//								/* current angle to square vertex */
+//								double t = 0.5 + (0.636619772367582 * ledangle) - currentEdgeFloat;
+//								if (t < 0.0) {
+//									t = 0.0;
+//								} else if (t > 1.0) {
+//									t = 1.0;
+//								}
+//								t = 0.5 * (1.0 - Math.Tan(0.25 * (Math.PI - 2.0 * Math.PI * t)));
+//								double cx = (1.0 - t) * Object.LEDVectors[(currentEdge + 3) % 4].X + t * Object.LEDVectors[currentEdge % 4].X;
+//								double cy = (1.0 - t) * Object.LEDVectors[(currentEdge + 3) % 4].Y + t * Object.LEDVectors[currentEdge % 4].Y;
+//								double cz = (1.0 - t) * Object.LEDVectors[(currentEdge + 3) % 4].Z + t * Object.LEDVectors[currentEdge % 4].Z;
+//								Object.States[s].Object.Mesh.Vertices[v + 0].Coordinates = Object.LEDVectors[(currentEdge + 3) % 4];
+//								Object.States[s].Object.Mesh.Vertices[v + 1].Coordinates = new World.Vector3D(cx, cy, cz);
+//								v += 2;
+//							}
+//							for (int j = currentEdge - 1; j > lastEdge; j--) {
+//								/* square-vertex to square-vertex */
+//								Object.States[s].Object.Mesh.Vertices[v + 0].Coordinates = Object.LEDVectors[(j + 3) % 4];
+//								Object.States[s].Object.Mesh.Vertices[v + 1].Coordinates = Object.LEDVectors[j % 4];
+//								v += 2;
+//							}
+//							{
+//								/* square vertex to last angle */
+//								double t = 0.5 + (0.636619772367582 * Object.LEDLastAngle) - lastEdgeFloat;
+//								if (t < 0.0) {
+//									t = 0.0;
+//								} else if (t > 1.0) {
+//									t = 1.0;
+//								}
+//								t = 0.5 * (1.0 - Math.Tan(0.25 * (Math.PI - 2.0 * Math.PI * t)));
+//								double lx = (1.0 - t) * Object.LEDVectors[(lastEdge + 3) % 4].X + t * Object.LEDVectors[lastEdge].X;
+//								double ly = (1.0 - t) * Object.LEDVectors[(lastEdge + 3) % 4].Y + t * Object.LEDVectors[lastEdge].Y;
+//								double lz = (1.0 - t) * Object.LEDVectors[(lastEdge + 3) % 4].Z + t * Object.LEDVectors[lastEdge].Z;
+//								Object.States[s].Object.Mesh.Vertices[v + 0].Coordinates = new World.Vector3D(lx, ly, lz);
+//								Object.States[s].Object.Mesh.Vertices[v + 1].Coordinates = Object.LEDVectors[lastEdge % 4];
+//								v += 2;
+//							}
+//						}
+//					}
+//				}
+//				for (int j = v; v < 11; v++) {
+//					Object.States[s].Object.Mesh.Vertices[j].Coordinates = Object.LEDVectors[4];
 //				}
 //			}
 //			// update vertices
@@ -519,17 +590,23 @@ namespace OpenBve {
 //				}
 //				// visibility changed
 //				if (Show) {
-//					Renderer.ShowObject(i, Overlay);
+//					if (Overlay) {
+//						Renderer.ShowObject(i, Renderer.ObjectType.Overlay);
+//					} else {
+//						Renderer.ShowObject(i, Renderer.ObjectType.Dynamic);
+//					}
 //				} else {
 //					Renderer.HideObject(i);
 //				}
 //			}
 //		}
-//		
-//		// update damping
+
+		// update damping
 //		internal static void UpdateDamping(ref Damping Damping, double TimeElapsed, ref double Angle) {
 //			if (TimeElapsed < 0.0) {
 //				TimeElapsed = 0.0;
+//			} else if (TimeElapsed > 1.0) {
+//				TimeElapsed = 1.0;
 //			}
 //			if (Damping != null) {
 //				if (Damping.CurrentTimeDelta > Damping.NaturalTime) {
@@ -579,8 +656,8 @@ namespace OpenBve {
 //				}
 //			}
 //		}
-//
-//		// animated world object
+
+		// animated world object
 //		internal class AnimatedWorldObject {
 //			internal World.Vector3D Position;
 //			internal double TrackPosition;
@@ -594,7 +671,7 @@ namespace OpenBve {
 //		}
 //		internal static AnimatedWorldObject[] AnimatedWorldObjects = new AnimatedWorldObject[4];
 //		internal static int AnimatedWorldObjectsUsed = 0;
-//		internal static void CreateAnimatedWorldObjects(AnimatedObject[] Prototypes, World.Vector3D Position, World.Transformation BaseTransformation, World.Transformation AuxTransformation, int SectionIndex, bool AccurateObjectDisposal, double StartingDistance, double EndingDistance, double TrackPosition, double Brightness, bool DuplicateMaterials) {
+//		internal static void CreateAnimatedWorldObjects(AnimatedObject[] Prototypes, World.Vector3D Position, World.Transformation BaseTransformation, World.Transformation AuxTransformation, int SectionIndex, bool AccurateObjectDisposal, double StartingDistance, double EndingDistance, double BlockLength, double TrackPosition, double Brightness, bool DuplicateMaterials) {
 //			bool[] free = new bool[Prototypes.Length];
 //			bool anyfree = false;
 //			for (int i = 0; i < Prototypes.Length; i++) {
@@ -614,7 +691,7 @@ namespace OpenBve {
 //							p.Y += Prototypes[i].States[0].Position.X * s.Y + Prototypes[i].States[0].Position.Y * u.Y + Prototypes[i].States[0].Position.Z * d.Y;
 //							p.Z += Prototypes[i].States[0].Position.X * s.Z + Prototypes[i].States[0].Position.Y * u.Z + Prototypes[i].States[0].Position.Z * d.Z;
 //							double zOffset = Prototypes[i].States[0].Position.Z;
-//							CreateStaticObject(Prototypes[i].States[0].Object, p, BaseTransformation, AuxTransformation, AccurateObjectDisposal, zOffset, StartingDistance, EndingDistance, TrackPosition, Brightness, DuplicateMaterials);
+//							CreateStaticObject(Prototypes[i].States[0].Object, p, BaseTransformation, AuxTransformation, AccurateObjectDisposal, zOffset, StartingDistance, EndingDistance, BlockLength, TrackPosition, Brightness, DuplicateMaterials);
 //						} else {
 //							CreateAnimatedWorldObject(Prototypes[i], Position, BaseTransformation, AuxTransformation, SectionIndex, TrackPosition, Brightness);
 //						}
@@ -633,7 +710,7 @@ namespace OpenBve {
 //			if (a >= AnimatedWorldObjects.Length) {
 //				Array.Resize<AnimatedWorldObject>(ref AnimatedWorldObjects, AnimatedWorldObjects.Length << 1);
 //			}
-//			World.Transformation FinalTransformation = new World.Transformation(BaseTransformation, AuxTransformation);
+//			World.Transformation FinalTransformation = new World.Transformation(AuxTransformation, BaseTransformation);
 //			AnimatedWorldObjects[a] = new AnimatedWorldObject();
 //			AnimatedWorldObjects[a].Position = Position;
 //			AnimatedWorldObjects[a].Direction = FinalTransformation.Z;
@@ -675,53 +752,55 @@ namespace OpenBve {
 //		}
 //		internal static void UpdateAnimatedWorldObjects(double TimeElapsed, bool ForceUpdate) {
 //			for (int i = 0; i < AnimatedWorldObjectsUsed; i++) {
+//				const double extraRadius = 10.0;
 //				double z = AnimatedWorldObjects[i].Object.TranslateZFunction == null ? 0.0 : AnimatedWorldObjects[i].Object.TranslateZFunction.LastResult;
-//				double pa = AnimatedWorldObjects[i].TrackPosition + z - AnimatedWorldObjects[i].Radius;
-//				double pb = AnimatedWorldObjects[i].TrackPosition + z + AnimatedWorldObjects[i].Radius;
-//				double ta = World.CameraTrackFollower.TrackPosition - World.BackgroundImageDistance - 4.0 * World.ExtraViewingDistance;
-//				double tb = World.CameraTrackFollower.TrackPosition + World.BackgroundImageDistance + 4.0 * World.ExtraViewingDistance;
-//				bool v = pb >= ta & pa <= tb;
-//				if (v) {
-//					if (Game.SecondsSinceMidnight >= AnimatedWorldObjects[i].Object.TimeNextUpdated | ForceUpdate) {
-//						double timeDelta = Game.SecondsSinceMidnight - AnimatedWorldObjects[i].Object.TimeLastUpdated;
-//						AnimatedWorldObjects[i].Object.TimeNextUpdated = Game.SecondsSinceMidnight + AnimatedWorldObjects[i].Object.RefreshRate;
-//						AnimatedWorldObjects[i].Object.TimeLastUpdated = Game.SecondsSinceMidnight;
+//				double pa = AnimatedWorldObjects[i].TrackPosition + z - AnimatedWorldObjects[i].Radius - extraRadius;
+//				double pb = AnimatedWorldObjects[i].TrackPosition + z + AnimatedWorldObjects[i].Radius + extraRadius;
+//				double ta = World.CameraTrackFollower.TrackPosition - World.BackgroundImageDistance - World.ExtraViewingDistance;
+//				double tb = World.CameraTrackFollower.TrackPosition + World.BackgroundImageDistance + World.ExtraViewingDistance;
+//				bool visible = pb >= ta & pa <= tb;
+//				if (visible | ForceUpdate) {
+//					if (AnimatedWorldObjects[i].Object.SecondsSinceLastUpdate >= AnimatedWorldObjects[i].Object.RefreshRate | ForceUpdate) {
+//						double timeDelta = AnimatedWorldObjects[i].Object.SecondsSinceLastUpdate + TimeElapsed;
+//						AnimatedWorldObjects[i].Object.SecondsSinceLastUpdate = 0.0;
 //						TrainManager.Train train = null;
 //						double trainDistance = double.MaxValue;
 //						for (int j = 0; j < TrainManager.Trains.Length; j++) {
-//							double distance;
-//							if (TrainManager.Trains[j].Cars[0].FrontAxle.Follower.TrackPosition < AnimatedWorldObjects[i].TrackPosition) {
-//								distance = AnimatedWorldObjects[i].TrackPosition - TrainManager.Trains[j].Cars[0].FrontAxle.Follower.TrackPosition;
-//							} else if (TrainManager.Trains[j].Cars[TrainManager.Trains[j].Cars.Length - 1].RearAxle.Follower.TrackPosition > AnimatedWorldObjects[i].TrackPosition) {
-//								distance = TrainManager.Trains[j].Cars[TrainManager.Trains[j].Cars.Length - 1].RearAxle.Follower.TrackPosition - AnimatedWorldObjects[i].TrackPosition;
-//							} else {
-//								distance = 0;
-//							}
-//							if (distance < trainDistance) {
-//								train = TrainManager.Trains[j];
-//								trainDistance = distance;
+//							if (TrainManager.Trains[j].State == TrainManager.TrainState.Available) {
+//								double distance;
+//								if (TrainManager.Trains[j].Cars[0].FrontAxle.Follower.TrackPosition < AnimatedWorldObjects[i].TrackPosition) {
+//									distance = AnimatedWorldObjects[i].TrackPosition - TrainManager.Trains[j].Cars[0].FrontAxle.Follower.TrackPosition;
+//								} else if (TrainManager.Trains[j].Cars[TrainManager.Trains[j].Cars.Length - 1].RearAxle.Follower.TrackPosition > AnimatedWorldObjects[i].TrackPosition) {
+//									distance = TrainManager.Trains[j].Cars[TrainManager.Trains[j].Cars.Length - 1].RearAxle.Follower.TrackPosition - AnimatedWorldObjects[i].TrackPosition;
+//								} else {
+//									distance = 0;
+//								}
+//								if (distance < trainDistance) {
+//									train = TrainManager.Trains[j];
+//									trainDistance = distance;
+//								}
 //							}
 //						}
 //						UpdateAnimatedObject(ref AnimatedWorldObjects[i].Object, false, train, train == null ? 0 : train.DriverCar, AnimatedWorldObjects[i].SectionIndex, AnimatedWorldObjects[i].TrackPosition, AnimatedWorldObjects[i].Position, AnimatedWorldObjects[i].Direction, AnimatedWorldObjects[i].Up, AnimatedWorldObjects[i].Side, false, true, true, timeDelta);
+//					} else {
+//						AnimatedWorldObjects[i].Object.SecondsSinceLastUpdate += TimeElapsed;
 //					}
 //					if (!AnimatedWorldObjects[i].Visible) {
-//						Renderer.ShowObject(AnimatedWorldObjects[i].Object.ObjectIndex, false);
+//						Renderer.ShowObject(AnimatedWorldObjects[i].Object.ObjectIndex, Renderer.ObjectType.Dynamic);
 //						AnimatedWorldObjects[i].Visible = true;
 //					}
 //				} else {
+//					AnimatedWorldObjects[i].Object.SecondsSinceLastUpdate += TimeElapsed;
 //					if (AnimatedWorldObjects[i].Visible) {
 //						Renderer.HideObject(AnimatedWorldObjects[i].Object.ObjectIndex);
 //						AnimatedWorldObjects[i].Visible = false;
-//					}
-//					if (ForceUpdate) {
-//						AnimatedWorldObjects[i].Object.TimeNextUpdated = Game.SecondsSinceMidnight;
 //					}
 //				}
 //			}
 //		}
 
 		// load object
-		internal enum ObjectLoadMode { Normal, DontAllowUnloadOfTextures, PreloadTextures }
+		internal enum ObjectLoadMode { Normal, DontAllowUnloadOfTextures }
 		internal static UnifiedObject LoadObject(string FileName, System.Text.Encoding Encoding, ObjectLoadMode LoadMode, bool PreserveVertices, bool ForceTextureRepeatX, bool ForceTextureRepeatY) {
 			#if !DEBUG
 			try {
@@ -729,17 +808,17 @@ namespace OpenBve {
 				if (!System.IO.Path.HasExtension(FileName)) {
 					while (true) {
 						string f;
-						f = Interface.GetCorrectedFileName(FileName + ".x");
+						f = OpenBveApi.Path.CombineFile(System.IO.Path.GetDirectoryName(FileName), System.IO.Path.GetFileName(FileName) + ".x");
 						if (System.IO.File.Exists(f)) {
 							FileName = f;
 							break;
 						}
-						f = Interface.GetCorrectedFileName(FileName + ".csv");
+						f = OpenBveApi.Path.CombineFile(System.IO.Path.GetDirectoryName(FileName), System.IO.Path.GetFileName(FileName) + ".csv");
 						if (System.IO.File.Exists(f)) {
 							FileName = f;
 							break;
 						}
-						f = Interface.GetCorrectedFileName(FileName + ".b3d");
+						f = OpenBveApi.Path.CombineFile(System.IO.Path.GetDirectoryName(FileName), System.IO.Path.GetFileName(FileName) + ".b3d");
 						if (System.IO.File.Exists(f)) {
 							FileName = f;
 							break;
@@ -760,7 +839,7 @@ namespace OpenBve {
 						Result = AnimatedObjectParser.ReadObject(FileName, Encoding, LoadMode);
 						break;
 					default:
-						Interface.AddMessage(Interface.MessageType.Error, false, "The file extension is not supported in " + FileName);
+						Interface.AddMessage(Interface.MessageType.Error, false, "The file extension is not supported: " + FileName);
 						return null;
 				}
 				OptimizeObject(Result, PreserveVertices);
@@ -779,17 +858,17 @@ namespace OpenBve {
 				if (!System.IO.Path.HasExtension(FileName)) {
 					while (true) {
 						string f;
-						f = Interface.GetCorrectedFileName(FileName + ".x");
+						f = OpenBveApi.Path.CombineFile(System.IO.Path.GetDirectoryName(FileName), System.IO.Path.GetFileName(FileName) + ".x");
 						if (System.IO.File.Exists(f)) {
 							FileName = f;
 							break;
 						}
-						f = Interface.GetCorrectedFileName(FileName + ".csv");
+						f = OpenBveApi.Path.CombineFile(System.IO.Path.GetDirectoryName(FileName), System.IO.Path.GetFileName(FileName) + ".csv");
 						if (System.IO.File.Exists(f)) {
 							FileName = f;
 							break;
 						}
-						f = Interface.GetCorrectedFileName(FileName + ".b3d");
+						f = OpenBveApi.Path.CombineFile(System.IO.Path.GetDirectoryName(FileName), System.IO.Path.GetFileName(FileName) + ".b3d");
 						if (System.IO.File.Exists(f)) {
 							FileName = f;
 							break;
@@ -806,8 +885,11 @@ namespace OpenBve {
 					case ".x":
 						Result = XObjectParser.ReadObject(FileName, Encoding, LoadMode, ForceTextureRepeatX, ForceTextureRepeatY);
 						break;
+					case ".animated":
+						Interface.AddMessage(Interface.MessageType.Error, false, "Tried to load an animated object even though only static objects are allowed: " + FileName);
+						return null;
 					default:
-						Interface.AddMessage(Interface.MessageType.Error, false, "The file extension is not supported in " + FileName);
+						Interface.AddMessage(Interface.MessageType.Error, false, "The file extension is not supported: " + FileName);
 						return null;
 				}
 				OptimizeObject(Result, PreserveVertices);
@@ -1296,31 +1378,31 @@ namespace OpenBve {
 //				}
 //			}
 //		}
-//
-//		// create object
-//		internal static void CreateObject(UnifiedObject Prototype, World.Vector3D Position, World.Transformation BaseTransformation, World.Transformation AuxTransformation, bool AccurateObjectDisposal, double StartingDistance, double EndingDistance, double TrackPosition) {
-//			CreateObject(Prototype, Position, BaseTransformation, AuxTransformation, -1, AccurateObjectDisposal, StartingDistance, EndingDistance, TrackPosition, 1.0, false);
+
+		// create object
+//		internal static void CreateObject(UnifiedObject Prototype, World.Vector3D Position, World.Transformation BaseTransformation, World.Transformation AuxTransformation, bool AccurateObjectDisposal, double StartingDistance, double EndingDistance, double BlockLength, double TrackPosition) {
+//			CreateObject(Prototype, Position, BaseTransformation, AuxTransformation, -1, AccurateObjectDisposal, StartingDistance, EndingDistance, BlockLength, TrackPosition, 1.0, false);
 //		}
-//		internal static void CreateObject(UnifiedObject Prototype, World.Vector3D Position, World.Transformation BaseTransformation, World.Transformation AuxTransformation, int SectionIndex, bool AccurateObjectDisposal, double StartingDistance, double EndingDistance, double TrackPosition, double Brightness, bool DuplicateMaterials) {
+//		internal static void CreateObject(UnifiedObject Prototype, World.Vector3D Position, World.Transformation BaseTransformation, World.Transformation AuxTransformation, int SectionIndex, bool AccurateObjectDisposal, double StartingDistance, double EndingDistance, double BlockLength, double TrackPosition, double Brightness, bool DuplicateMaterials) {
 //			if (Prototype is StaticObject) {
 //				StaticObject s = (StaticObject)Prototype;
-//				CreateStaticObject(s, Position, BaseTransformation, AuxTransformation, AccurateObjectDisposal, 0.0, StartingDistance, EndingDistance, TrackPosition, Brightness, DuplicateMaterials);
+//				CreateStaticObject(s, Position, BaseTransformation, AuxTransformation, AccurateObjectDisposal, 0.0, StartingDistance, EndingDistance, BlockLength, TrackPosition, Brightness, DuplicateMaterials);
 //			} else if (Prototype is AnimatedObjectCollection) {
 //				AnimatedObjectCollection a = (AnimatedObjectCollection)Prototype;
-//				CreateAnimatedWorldObjects(a.Objects, Position, BaseTransformation, AuxTransformation, SectionIndex, AccurateObjectDisposal, StartingDistance, EndingDistance, TrackPosition, Brightness, DuplicateMaterials);
+//				CreateAnimatedWorldObjects(a.Objects, Position, BaseTransformation, AuxTransformation, SectionIndex, AccurateObjectDisposal, StartingDistance, EndingDistance, BlockLength, TrackPosition, Brightness, DuplicateMaterials);
 //			}
 //		}
-//
-//		// create static object
-//		internal static int CreateStaticObject(StaticObject Prototype, World.Vector3D Position, World.Transformation BaseTransformation, World.Transformation AuxTransformation, bool AccurateObjectDisposal, double StartingDistance, double EndingDistance, double TrackPosition) {
-//			return CreateStaticObject(Prototype, Position, BaseTransformation, AuxTransformation, AccurateObjectDisposal, 0.0, StartingDistance, EndingDistance, TrackPosition, 1.0, false);
+
+		// create static object
+//		internal static int CreateStaticObject(StaticObject Prototype, World.Vector3D Position, World.Transformation BaseTransformation, World.Transformation AuxTransformation, bool AccurateObjectDisposal, double StartingDistance, double EndingDistance, double BlockLength, double TrackPosition) {
+//			return CreateStaticObject(Prototype, Position, BaseTransformation, AuxTransformation, AccurateObjectDisposal, 0.0, StartingDistance, EndingDistance, BlockLength, TrackPosition, 1.0, false);
 //		}
-//		internal static int CreateStaticObject(StaticObject Prototype, World.Vector3D Position, World.Transformation BaseTransformation, World.Transformation AuxTransformation, bool AccurateObjectDisposal, double AccurateObjectDisposalZOffset, double StartingDistance, double EndingDistance, double TrackPosition, double Brightness, bool DuplicateMaterials) {
+//		internal static int CreateStaticObject(StaticObject Prototype, World.Vector3D Position, World.Transformation BaseTransformation, World.Transformation AuxTransformation, bool AccurateObjectDisposal, double AccurateObjectDisposalZOffset, double StartingDistance, double EndingDistance, double BlockLength, double TrackPosition, double Brightness, bool DuplicateMaterials) {
 //			int a = ObjectsUsed;
 //			if (a >= Objects.Length) {
 //				Array.Resize<StaticObject>(ref Objects, Objects.Length << 1);
 //			}
-//			ApplyStaticObjectData(ref Objects[a], Prototype, Position, BaseTransformation, AuxTransformation, AccurateObjectDisposal, AccurateObjectDisposalZOffset, StartingDistance, EndingDistance, TrackPosition, Brightness, DuplicateMaterials);
+//			ApplyStaticObjectData(ref Objects[a], Prototype, Position, BaseTransformation, AuxTransformation, AccurateObjectDisposal, AccurateObjectDisposalZOffset, StartingDistance, EndingDistance, BlockLength, TrackPosition, Brightness, DuplicateMaterials);
 //			for (int i = 0; i < Prototype.Mesh.Faces.Length; i++) {
 //				switch (Prototype.Mesh.Faces[i].Flags & World.MeshFace.FaceTypeMask) {
 //					case World.MeshFace.FaceTypeTriangles:
@@ -1343,11 +1425,11 @@ namespace OpenBve {
 //			ObjectsUsed++;
 //			return a;
 //		}
-//		internal static void ApplyStaticObjectData(ref StaticObject Object, StaticObject Prototype, World.Vector3D Position, World.Transformation BaseTransformation, World.Transformation AuxTransformation, bool AccurateObjectDisposal, double AccurateObjectDisposalZOffset, double StartingDistance, double EndingDistance, double TrackPosition, double Brightness, bool DuplicateMaterials) {
+//		internal static void ApplyStaticObjectData(ref StaticObject Object, StaticObject Prototype, World.Vector3D Position, World.Transformation BaseTransformation, World.Transformation AuxTransformation, bool AccurateObjectDisposal, double AccurateObjectDisposalZOffset, double StartingDistance, double EndingDistance, double BlockLength, double TrackPosition, double Brightness, bool DuplicateMaterials) {
 //			Object = new StaticObject();
 //			Object.StartingDistance = float.MaxValue;
 //			Object.EndingDistance = float.MinValue;
-//			bool brightnesschange = Brightness != 1.0;
+//			// bool brightnesschange = Brightness != 1.0;
 //			// vertices
 //			Object.Mesh.Vertices = new World.Vertex[Prototype.Mesh.Vertices.Length];
 //			for (int j = 0; j < Prototype.Mesh.Vertices.Length; j++) {
@@ -1397,29 +1479,47 @@ namespace OpenBve {
 //				Object.Mesh.Materials[j].Color.G = (byte)Math.Round((double)Prototype.Mesh.Materials[j].Color.G * Brightness);
 //				Object.Mesh.Materials[j].Color.B = (byte)Math.Round((double)Prototype.Mesh.Materials[j].Color.B * Brightness);
 //			}
+//			const double minBlockLength = 20.0;
+//			if (BlockLength < minBlockLength) {
+//				BlockLength = BlockLength * Math.Ceiling(minBlockLength / BlockLength);
+//			}
 //			if (AccurateObjectDisposal) {
 //				Object.StartingDistance += (float)TrackPosition;
 //				Object.EndingDistance += (float)TrackPosition;
+//				double z = BlockLength * Math.Floor(TrackPosition / BlockLength);
+//				StartingDistance = Math.Min(z - BlockLength, (double)Object.StartingDistance);
+//				EndingDistance = Math.Max(z + 2.0 * BlockLength, (double)Object.EndingDistance);
+//				Object.StartingDistance = (float)(BlockLength * Math.Floor(StartingDistance / BlockLength));
+//				Object.EndingDistance = (float)(BlockLength * Math.Ceiling(EndingDistance / BlockLength));
 //			} else {
 //				Object.StartingDistance = (float)StartingDistance;
 //				Object.EndingDistance = (float)EndingDistance;
 //			}
-//		}
-//
-//		// create dynamic object
-//		internal static int CreateDynamicObject() {
-//			int a = ObjectsUsed;
-//			if (a >= Objects.Length) {
-//				Array.Resize<StaticObject>(ref Objects, Objects.Length << 1);
+//			if (BlockLength != 0.0) {
+//				checked {
+//					Object.GroupIndex = (short)Mod(Math.Floor(Object.StartingDistance / BlockLength), Math.Ceiling(World.BackgroundImageDistance / BlockLength));
+//				}
 //			}
-//			Objects[a] = new StaticObject();
-//			Objects[a].Mesh.Faces = new World.MeshFace[] { };
-//			Objects[a].Mesh.Materials = new World.MeshMaterial[] { };
-//			Objects[a].Mesh.Vertices = new World.Vertex[] { };
-//			Objects[a].Dynamic = 1;
-//			ObjectsUsed++;
-//			return a;
 //		}
+		
+		private static double Mod(double a, double b) {
+			return a - b * Math.Floor(a / b);
+		}
+
+		// create dynamic object
+		internal static int CreateDynamicObject() {
+			int a = ObjectsUsed;
+			if (a >= Objects.Length) {
+				Array.Resize<StaticObject>(ref Objects, Objects.Length << 1);
+			}
+			Objects[a] = new StaticObject();
+			Objects[a].Mesh.Faces = new World.MeshFace[] { };
+			Objects[a].Mesh.Materials = new World.MeshMaterial[] { };
+			Objects[a].Mesh.Vertices = new World.Vertex[] { };
+			Objects[a].Dynamic = true;
+			ObjectsUsed++;
+			return a;
+		}
 
 		// clone object
 		internal static StaticObject CloneObject(StaticObject Prototype) {
@@ -1431,6 +1531,7 @@ namespace OpenBve {
 			StaticObject Result = new StaticObject();
 			Result.StartingDistance = Prototype.StartingDistance;
 			Result.EndingDistance = Prototype.EndingDistance;
+			Result.Dynamic = Prototype.Dynamic;
 			// vertices
 			Result.Mesh.Vertices = new World.Vertex[Prototype.Mesh.Vertices.Length];
 			for (int j = 0; j < Prototype.Mesh.Vertices.Length; j++) {
@@ -1465,8 +1566,8 @@ namespace OpenBve {
 //			Array.Resize<StaticObject>(ref Objects, ObjectsUsed);
 //			Array.Resize<AnimatedWorldObject>(ref AnimatedWorldObjects, AnimatedWorldObjectsUsed);
 //		}
-//
-//		// initialize visibility
+
+		// initialize visibility
 //		internal static void InitializeVisibility() {
 //			// sort objects
 //			ObjectsSortedByStart = new int[ObjectsUsed];
@@ -1475,7 +1576,7 @@ namespace OpenBve {
 //			double[] b = new double[ObjectsUsed];
 //			int n = 0;
 //			for (int i = 0; i < ObjectsUsed; i++) {
-//				if (Objects[i].Dynamic == 0) {
+//				if (!Objects[i].Dynamic) {
 //					ObjectsSortedByStart[n] = i;
 //					ObjectsSortedByEnd[n] = i;
 //					a[n] = Objects[i].StartingDistance;
@@ -1494,15 +1595,15 @@ namespace OpenBve {
 //			// initial visiblity
 //			double p = World.CameraTrackFollower.TrackPosition + World.CameraCurrentAlignment.Position.Z;
 //			for (int i = 0; i < ObjectsUsed; i++) {
-//				if (Objects[i].Dynamic == 0) {
+//				if (!Objects[i].Dynamic) {
 //					if (Objects[i].StartingDistance <= p + World.ForwardViewingDistance & Objects[i].EndingDistance >= p - World.BackwardViewingDistance) {
-//						Renderer.ShowObject(i, false);
+//						Renderer.ShowObject(i, Renderer.ObjectType.Static);
 //					}
 //				}
 //			}
 //		}
-//
-//		// update visibility
+
+		// update visibility
 //		internal static void UpdateVisibility(double TrackPosition, bool ViewingDistanceChanged) {
 //			if (ViewingDistanceChanged) {
 //				UpdateVisibility(TrackPosition);
@@ -1516,20 +1617,11 @@ namespace OpenBve {
 //		internal static void UpdateVisibility(double TrackPosition) {
 //			double d = TrackPosition - LastUpdatedTrackPosition;
 //			int n = ObjectsSortedByStart.Length;
+//			int m = ObjectsSortedByEnd.Length;
 //			double p = World.CameraTrackFollower.TrackPosition + World.CameraCurrentAlignment.Position.Z;
 //			if (d < 0.0) {
 //				if (ObjectsSortedByStartPointer >= n) ObjectsSortedByStartPointer = n - 1;
 //				if (ObjectsSortedByEndPointer >= n) ObjectsSortedByEndPointer = n - 1;
-//				// introduce
-//				while (ObjectsSortedByEndPointer >= 0) {
-//					int o = ObjectsSortedByEnd[ObjectsSortedByEndPointer];
-//					if (Objects[o].EndingDistance >= p - World.BackwardViewingDistance) {
-//						Renderer.ShowObject(o, false);
-//						ObjectsSortedByEndPointer--;
-//					} else {
-//						break;
-//					}
-//				}
 //				// dispose
 //				while (ObjectsSortedByStartPointer >= 0) {
 //					int o = ObjectsSortedByStart[ObjectsSortedByStartPointer];
@@ -1540,25 +1632,39 @@ namespace OpenBve {
 //						break;
 //					}
 //				}
-//			} else if (d > 0.0) {
-//				if (ObjectsSortedByStartPointer < 0) ObjectsSortedByStartPointer = 0;
-//				if (ObjectsSortedByEndPointer < 0) ObjectsSortedByEndPointer = 0;
 //				// introduce
-//				while (ObjectsSortedByStartPointer < n) {
-//					int o = ObjectsSortedByStart[ObjectsSortedByStartPointer];
-//					if (Objects[o].StartingDistance <= p + World.ForwardViewingDistance) {
-//						Renderer.ShowObject(o, false);
-//						ObjectsSortedByStartPointer++;
+//				while (ObjectsSortedByEndPointer >= 0) {
+//					int o = ObjectsSortedByEnd[ObjectsSortedByEndPointer];
+//					if (Objects[o].EndingDistance >= p - World.BackwardViewingDistance) {
+//						if (Objects[o].StartingDistance <= p + World.ForwardViewingDistance) {
+//							Renderer.ShowObject(o, Renderer.ObjectType.Static);
+//						}
+//						ObjectsSortedByEndPointer--;
 //					} else {
 //						break;
 //					}
 //				}
+//			} else if (d > 0.0) {
+//				if (ObjectsSortedByStartPointer < 0) ObjectsSortedByStartPointer = 0;
+//				if (ObjectsSortedByEndPointer < 0) ObjectsSortedByEndPointer = 0;
 //				// dispose
 //				while (ObjectsSortedByEndPointer < n) {
 //					int o = ObjectsSortedByEnd[ObjectsSortedByEndPointer];
 //					if (Objects[o].EndingDistance < p - World.BackwardViewingDistance) {
 //						Renderer.HideObject(o);
 //						ObjectsSortedByEndPointer++;
+//					} else {
+//						break;
+//					}
+//				}
+//				// introduce
+//				while (ObjectsSortedByStartPointer < n) {
+//					int o = ObjectsSortedByStart[ObjectsSortedByStartPointer];
+//					if (Objects[o].StartingDistance <= p + World.ForwardViewingDistance) {
+//						if (Objects[o].EndingDistance >= p - World.BackwardViewingDistance) {
+//							Renderer.ShowObject(o, Renderer.ObjectType.Static);
+//						}
+//						ObjectsSortedByStartPointer++;
 //					} else {
 //						break;
 //					}

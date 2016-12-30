@@ -1,4 +1,5 @@
 using System;
+using OpenBveApi;
 
 namespace OpenBve {
 	internal static class AnimatedObjectParser {
@@ -24,14 +25,12 @@ namespace OpenBve {
 				} else {
 					Lines[i] = Lines[i].Trim();
 				}
-				if (Program.CurrentProgramType == Program.ProgramType.ObjectViewer | Program.CurrentProgramType == Program.ProgramType.RouteViewer) {
-					if (Lines[i].IndexOf("functionrpn", StringComparison.OrdinalIgnoreCase) >= 0) {
-						rpnUsed = true;
-					}
+				if (Lines[i].IndexOf("functionrpn", StringComparison.OrdinalIgnoreCase) >= 0) {
+					rpnUsed = true;
 				}
 			}
 			if (rpnUsed) {
-				Interface.AddMessage(Interface.MessageType.Warning, false, "An animated object file contains unofficial RPN functions. Please get rid of them in file " + FileName);
+				Interface.AddMessage(Interface.MessageType.Error, false, "An animated object file contains RPN functions. These were never meant to be used directly, only for debugging. They won't be supported indefinately. Please get rid of them in file " + FileName);
 			}
 			for (int i = 0; i < Lines.Length; i++) {
 				if (Lines[i].Length != 0) {
@@ -73,10 +72,10 @@ namespace OpenBve {
 											}
 										} else {
 											string Folder = System.IO.Path.GetDirectoryName(FileName);
-											if (Interface.ContainsInvalidPathChars(Lines[i])) {
+											if (Path.ContainsInvalidChars(Lines[i])) {
 												Interface.AddMessage(Interface.MessageType.Error, false, Lines[i] + " contains illegal characters at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 											} else {
-												string file = Interface.GetCombinedFileName(Folder, Lines[i]);
+												string file = OpenBveApi.Path.CombineFile(Folder, Lines[i]);
 												if (System.IO.File.Exists(file)) {
 													if (obj.Length == objCount) {
 														Array.Resize<ObjectManager.UnifiedObject>(ref obj, obj.Length << 1);
@@ -96,7 +95,7 @@ namespace OpenBve {
 									if (obj[j] != null) {
 										if (obj[j] is ObjectManager.StaticObject) {
 											ObjectManager.StaticObject s = (ObjectManager.StaticObject)obj[j];
-											s.Dynamic = 1;
+											s.Dynamic = true;
 											if (ObjectCount >= Result.Objects.Length) {
 												Array.Resize<ObjectManager.AnimatedObject>(ref Result.Objects, Result.Objects.Length << 1);
 											}
@@ -146,7 +145,10 @@ namespace OpenBve {
 								Result.Objects[ObjectCount].RefreshRate = 0.0;
 								Result.Objects[ObjectCount].ObjectIndex = -1;
 								World.Vector3D Position = new World.Vector3D(0.0, 0.0, 0.0);
+								bool timetableUsed = false;
 								string[] StateFiles = null;
+								string StateFunctionRpn = null;
+								int StateFunctionLine = -1;
 								while (i < Lines.Length && !(Lines[i].StartsWith("[", StringComparison.Ordinal) & Lines[i].EndsWith("]", StringComparison.Ordinal))) {
 									if (Lines[i].Length != 0) {
 										int j = Lines[i].IndexOf("=", StringComparison.Ordinal);
@@ -178,18 +180,31 @@ namespace OpenBve {
 														if (s.Length >= 1) {
 															string Folder = System.IO.Path.GetDirectoryName(FileName);
 															StateFiles = new string[s.Length];
+														    bool NullObject = true;
 															for (int k = 0; k < s.Length; k++) {
 																s[k] = s[k].Trim();
-																if (Interface.ContainsInvalidPathChars(s[k])) {
+																if (s[k].Length == 0) {
+																	Interface.AddMessage(Interface.MessageType.Error, false, "File" + k.ToString(Culture) + " is an empty string - did you mean something else? - in " + a + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
+																	StateFiles[k] = null;
+																} else if (Path.ContainsInvalidChars(s[k])) {
 																	Interface.AddMessage(Interface.MessageType.Error, false, "File" + k.ToString(Culture) + " contains illegal characters in " + a + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 																	StateFiles[k] = null;
 																} else {
-																	StateFiles[k] = Interface.GetCombinedFileName(Folder, s[k]);
+																	StateFiles[k] = OpenBveApi.Path.CombineFile(Folder, s[k]);
 																	if (!System.IO.File.Exists(StateFiles[k])) {
 																		Interface.AddMessage(Interface.MessageType.Error, true, "File " + StateFiles[k] + " not found in " + a + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 																		StateFiles[k] = null;
 																	}
 																}
+															    if (StateFiles[k] != null)
+															    {
+															        NullObject = false;
+															    }
+															}
+															if (NullObject == true)
+															{
+																Interface.AddMessage(Interface.MessageType.Error, false, "No statefiles were found in " + a + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
+																return null;
 															}
 														} else {
 															Interface.AddMessage(Interface.MessageType.Error, false, "At least one argument is expected in " + a + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
@@ -198,15 +213,15 @@ namespace OpenBve {
 													} break;
 												case "statefunction":
 													try {
-														Result.Objects[ObjectCount].StateFunction = FunctionScripts.GetFunctionScriptFromInfixNotation(b);
+														StateFunctionLine = i;
+														StateFunctionRpn = FunctionScripts.GetPostfixNotationFromInfixNotation(b);
 													} catch (Exception ex) {
 														Interface.AddMessage(Interface.MessageType.Error, false, ex.Message + " in " + a + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 													} break;
 												case "statefunctionrpn":
-													try {
-														Result.Objects[ObjectCount].StateFunction = FunctionScripts.GetFunctionScriptFromPostfixNotation(b);
-													} catch (Exception ex) {
-														Interface.AddMessage(Interface.MessageType.Error, false, ex.Message + " in " + a + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
+													{
+														StateFunctionLine = i;
+														StateFunctionRpn = b;
 													} break;
 												case "translatexdirection":
 												case "translateydirection":
@@ -422,6 +437,21 @@ namespace OpenBve {
 													} catch (Exception ex) {
 														Interface.AddMessage(Interface.MessageType.Error, false, ex.Message + " in " + a + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 													} break;
+												case "textureoverride":
+													switch (b.ToLowerInvariant()) {
+														case "none":
+															break;
+														case "timetable":
+															if (!timetableUsed) {
+																Timetable.AddObjectForCustomTimetable(Result.Objects[ObjectCount]);
+																timetableUsed = true;
+															}
+															break;
+														default:
+															Interface.AddMessage(Interface.MessageType.Error, false, "Unrecognized value in " + a + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
+															break;
+													}
+													break;
 												case "refreshrate":
 													{
 														double r;
@@ -446,6 +476,21 @@ namespace OpenBve {
 								}
 								i--;
 								if (StateFiles != null) {
+									// create the object
+									if (timetableUsed) {
+										if (StateFunctionRpn != null) {
+											StateFunctionRpn = "timetable 0 == " + StateFunctionRpn + " -1 ?";
+										} else {
+											StateFunctionRpn = "timetable";
+										}
+									}
+									if (StateFunctionRpn != null) {
+										try {
+											Result.Objects[ObjectCount].StateFunction = FunctionScripts.GetFunctionScriptFromPostfixNotation(StateFunctionRpn);
+										} catch (Exception ex) {
+											Interface.AddMessage(Interface.MessageType.Error, false, ex.Message + " in StateFunction at line " + (StateFunctionLine + 1).ToString(Culture) + " in file " + FileName);
+										}
+									}
 									Result.Objects[ObjectCount].States = new ObjectManager.AnimatedObjectState[StateFiles.Length];
 									bool ForceTextureRepeatX = Result.Objects[ObjectCount].TextureShiftXFunction != null & Result.Objects[ObjectCount].TextureShiftXDirection.X != 0.0 |
 										Result.Objects[ObjectCount].TextureShiftYFunction != null & Result.Objects[ObjectCount].TextureShiftYDirection.Y != 0.0;
@@ -455,7 +500,9 @@ namespace OpenBve {
 										Result.Objects[ObjectCount].States[k].Position = new World.Vector3D(0.0, 0.0, 0.0);
 										if (StateFiles[k] != null) {
 											Result.Objects[ObjectCount].States[k].Object = ObjectManager.LoadStaticObject(StateFiles[k], Encoding, LoadMode, false, ForceTextureRepeatX, ForceTextureRepeatY);
-											Result.Objects[ObjectCount].States[k].Object.Dynamic = 1;
+											if (Result.Objects[ObjectCount].States[k].Object != null) {
+												Result.Objects[ObjectCount].States[k].Object.Dynamic = true;
+											}
 										} else {
 											Result.Objects[ObjectCount].States[k].Object = null;
 										}

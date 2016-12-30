@@ -1,6 +1,6 @@
-/*
+﻿/*
  * Created by SharpDevelop.
- * User: Gudbrandr
+ * User: Gary
  * Date: 15/05/2009
  * Time: 3:14 PM
  * 
@@ -16,7 +16,8 @@ using OpenBve;
 
 
 
-namespace RouteChecker
+//namespace RouteChecker
+namespace OpenBve
 {
 	/// <summary>
 	/// Description of MainForm.
@@ -37,7 +38,7 @@ namespace RouteChecker
 			//
 			InitializeComponent();
 			
-			this.DataFolder = Interface.GetDataFolder("Menu");
+			this.DataFolder = Program.FileSystem.GetDataFolder("Menu");
 			
 			// Register to receive custom progress events.
 			CsvRwRouteParser.onProgress += this.HandleProgressEvent;
@@ -54,12 +55,13 @@ namespace RouteChecker
 		    if(ofdRoute.ShowDialog() == DialogResult.OK){
 				this.strFilePath = ofdRoute.FileName;
 			    // Get folders.
-			    string rf = Loading.GetRailwayFolder(this.strFilePath);
+			    string rf = OpenBve.Loading.GetRailwayFolder(this.strFilePath);
 			    if(rf != null){
 			    	txtRoute.Text = ofdRoute.FileName;
 					this.RailwayFolder = rf;
-				    this.ObjectFolder = Interface.GetCombinedFolderName(RailwayFolder, "Object");
-					this.SoundFolder = Interface.GetCombinedFolderName(RailwayFolder, "Sound");
+					this.ObjectFolder = OpenBveApi.Path.CombineDirectory(RailwayFolder, "Object");
+					this.SoundFolder = OpenBveApi.Path.CombineDirectory(RailwayFolder, "Sound");
+
 					if(!btnProcessRoute.Enabled){
 						btnProcessRoute.Enabled = true;
 					}
@@ -111,16 +113,16 @@ namespace RouteChecker
 	        
 			lvMessages.SmallImageList = new ImageList();
 			try {
-				lvMessages.SmallImageList.Images.Add("information", Image.FromFile(Interface.GetCombinedFileName(this.DataFolder, "icon_information.png")));
+				lvMessages.SmallImageList.Images.Add("information", Image.FromFile(OpenBveApi.Path.CombineDirectory(this.DataFolder, "icon_information.png")));
 			} catch { }
 			try {
-				lvMessages.SmallImageList.Images.Add("warning", Image.FromFile(Interface.GetCombinedFileName(this.DataFolder, "icon_warning.png")));
+				lvMessages.SmallImageList.Images.Add("warning", Image.FromFile(OpenBveApi.Path.CombineDirectory(this.DataFolder, "icon_warning.png")));
 			} catch { }
 			try {
-				lvMessages.SmallImageList.Images.Add("error", Image.FromFile(Interface.GetCombinedFileName(this.DataFolder, "icon_error.png")));
+				lvMessages.SmallImageList.Images.Add("error", Image.FromFile(OpenBveApi.Path.CombineDirectory(this.DataFolder, "icon_error.png")));
 			} catch { }
 			try {
-				lvMessages.SmallImageList.Images.Add("critical", Image.FromFile(Interface.GetCombinedFileName(this.DataFolder, "icon_critical.png")));
+				lvMessages.SmallImageList.Images.Add("critical", Image.FromFile(OpenBveApi.Path.CombineDirectory(this.DataFolder, "icon_critical.png")));
 			} catch { }
 			Trace.WriteLine(Interface.MessageCount);
 			for(int i = 0; i < Interface.MessageCount; i++){
@@ -238,7 +240,8 @@ namespace RouteChecker
 		// CONVERSION TO CSV
 		
 		private enum With{Route, Train, Options, Structure, Texture, Cycle, Signal, Track};
-		private static RouteChecker.MainForm.With WithSection;
+//		private static RouteChecker.MainForm.With WithSection;
+		private static MainForm.With WithSection;
 			
 		private void ConvertToCVS(CsvRwRouteParser.Expression[] Expressions, string path)
 		{

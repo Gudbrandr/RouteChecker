@@ -1,5 +1,5 @@
 ﻿// ╔═════════════════════════════════════════════════════════════╗
-// ║ World.cs for Object Viewer and Route Viewer                 ║
+// ║ World.cs for Route Checker                                  ║
 // ╠═════════════════════════════════════════════════════════════╣
 // ║ This file cannot be used in the openBVE main program.       ║
 // ║ The file from the openBVE main program cannot be used here. ║
@@ -327,10 +327,10 @@ namespace OpenBve {
 			}
 			return (ushort)((int)Math.Round(HalfDistance) | ((int)Mode << 12));
 		}
-//		/// <summary>Recreates the half distance and the glow attenuation mode from a packed System.UInt16 that was created by GetGlowAttenuationData.</summary>
-//		/// <param name="Data">The data returned by GetGlowAttenuationData.</param>
-//		/// <param name="Mode">The mode of glow attenuation.</param>
-//		/// <param name="HalfDistance">The half distance of glow attenuation.</param>
+		/// <summary>Recreates the half distance and the glow attenuation mode from a packed System.UInt16 that was created by GetGlowAttenuationData.</summary>
+		/// <param name="Data">The data returned by GetGlowAttenuationData.</param>
+		/// <param name="Mode">The mode of glow attenuation.</param>
+		/// <param name="HalfDistance">The half distance of glow attenuation.</param>
 //		internal static void SplitGlowAttenuationData(ushort Data, out GlowAttenuationMode Mode, out double HalfDistance) {
 //			Mode = (GlowAttenuationMode)(Data >> 12);
 //			HalfDistance = (double)(Data & 4095);
@@ -381,15 +381,15 @@ namespace OpenBve {
 //		internal static CameraAlignment CameraCurrentAlignment;
 //		internal static CameraAlignment CameraAlignmentDirection;
 //		internal static CameraAlignment CameraAlignmentSpeed;
-//		internal static double CameraSpeed;
+//		internal const double CameraSpeed = 0.0;
 //		internal const double CameraInteriorTopSpeed = 1.0;
 //		internal const double CameraInteriorTopAngularSpeed = 2.0;
 //		internal const double CameraExteriorTopSpeed = 50.0;
 //		internal const double CameraExteriorTopAngularSpeed = 5.0;
 //		internal const double CameraZoomTopSpeed = 2.0;
-//		internal enum CameraViewMode { Interior, InteriorLookAhead, Exterior, Track, FlyBy, FlyByZooming }
-//		internal static CameraViewMode CameraMode;
-
+		internal enum CameraViewMode { Interior, InteriorLookAhead, Exterior, Track, FlyBy, FlyByZooming }
+		internal static CameraViewMode CameraMode;
+//
 		// camera restriction
 //		internal enum CameraRestrictionMode {
 //			NotAvailable = -1,
@@ -402,17 +402,17 @@ namespace OpenBve {
 		internal static World.Vector3D AbsoluteCameraPosition;
 //		internal static World.Vector3D AbsoluteCameraDirection;
 //		internal static World.Vector3D AbsoluteCameraUp;
-//		internal static World.Vector3D AbsoluteCameraSide;
+		internal static World.Vector3D AbsoluteCameraSide;
 
 		// update absolute camera
 //		internal static void UpdateAbsoluteCamera(double TimeElapsed) {
-			// zoom
+//			// zoom
 //			double zm = World.CameraCurrentAlignment.Zoom;
 //			AdjustAlignment(ref World.CameraCurrentAlignment.Zoom, World.CameraAlignmentDirection.Zoom, ref World.CameraAlignmentSpeed.Zoom, TimeElapsed, World.CameraAlignmentSpeed.Zoom != 0.0);
 //			if (zm != World.CameraCurrentAlignment.Zoom) {
 //				ApplyZoom();
 //			}
-			// current alignment
+//			// current alignment
 //			AdjustAlignment(ref World.CameraCurrentAlignment.Position.X, World.CameraAlignmentDirection.Position.X, ref World.CameraAlignmentSpeed.Position.X, TimeElapsed);
 //			AdjustAlignment(ref World.CameraCurrentAlignment.Position.Y, World.CameraAlignmentDirection.Position.Y, ref World.CameraAlignmentSpeed.Position.Y, TimeElapsed);
 //			bool q = World.CameraAlignmentSpeed.Yaw != 0.0 | World.CameraAlignmentSpeed.Pitch != 0.0 | World.CameraAlignmentSpeed.Roll != 0.0;
@@ -548,7 +548,7 @@ namespace OpenBve {
 //			Vector3D C; Cross(A.X, A.Y, A.Z, B.X, B.Y, B.Z, out C.X, out C.Y, out C.Z);
 //			return C;
 //		}
-//
+
 		// translate
 //		internal static Vector3D Translate(Vector3D A, Vector3D B) {
 //			return new Vector3D(A.X + B.X, A.Y + B.Y, A.Z + B.Z);
@@ -626,7 +626,7 @@ namespace OpenBve {
 //				this.Z = z;
 //			}
 //		}
-//
+
 		// rotate
 		internal static void Rotate(ref double px, ref double py, ref double pz, double dx, double dy, double dz, double cosa, double sina) {
 			double t = 1.0 / Math.Sqrt(dx * dx + dy * dy + dz * dz);

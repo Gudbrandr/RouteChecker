@@ -1,12 +1,13 @@
-/*
+﻿/*
  * Created by SharpDevelop.
- * User: Gudbrandr
+ * User: Gary
  * Date: 15/05/2009
  * Time: 3:14 PM
  * 
  * To change this template use Tools | Options | Coding | Edit Standard Headers.
  */
-namespace RouteChecker
+//namespace RouteChecker
+namespace OpenBve
 {
 	partial class MainForm
 	{
@@ -65,7 +66,7 @@ namespace RouteChecker
 			// txtRoute
 			// 
 			this.txtRoute.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-									| System.Windows.Forms.AnchorStyles.Right)));
+			| System.Windows.Forms.AnchorStyles.Right)));
 			this.txtRoute.Enabled = false;
 			this.txtRoute.Location = new System.Drawing.Point(76, 13);
 			this.txtRoute.Name = "txtRoute";
@@ -95,11 +96,11 @@ namespace RouteChecker
 			// lvMessages
 			// 
 			this.lvMessages.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-									| System.Windows.Forms.AnchorStyles.Left) 
-									| System.Windows.Forms.AnchorStyles.Right)));
+			| System.Windows.Forms.AnchorStyles.Left) 
+			| System.Windows.Forms.AnchorStyles.Right)));
 			this.lvMessages.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
-									this.columnHeaderType,
-									this.columnHeaderDescription});
+			this.columnHeaderType,
+			this.columnHeaderDescription});
 			this.lvMessages.FullRowSelect = true;
 			this.lvMessages.GridLines = true;
 			this.lvMessages.HeaderStyle = System.Windows.Forms.ColumnHeaderStyle.Nonclickable;
@@ -159,7 +160,7 @@ namespace RouteChecker
 			// progRoute
 			// 
 			this.progRoute.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
-									| System.Windows.Forms.AnchorStyles.Right)));
+			| System.Windows.Forms.AnchorStyles.Right)));
 			this.progRoute.Location = new System.Drawing.Point(12, 569);
 			this.progRoute.Name = "progRoute";
 			this.progRoute.Size = new System.Drawing.Size(540, 23);
@@ -311,9 +312,10 @@ namespace RouteChecker
 			this.MinimumSize = new System.Drawing.Size(680, 300);
 			this.Name = "MainForm";
 			this.SizeGripStyle = System.Windows.Forms.SizeGripStyle.Show;
-			this.Text = "OpenBVE RouteChecker";
+			this.Text = "Route Checker";
 			this.ResumeLayout(false);
 			this.PerformLayout();
+
 		}
 		private System.Windows.Forms.Label label1;
 		private System.Windows.Forms.Button btnLastError;

@@ -1,4 +1,8 @@
 ﻿using System;
+using System.Drawing;
+using OpenBveApi.Math;
+using OpenBveApi.Textures;
+using OpenBveApi;
 
 namespace OpenBve {
 	internal static class CsvB3dObjectParser {
@@ -14,6 +18,11 @@ namespace OpenBve {
 			internal string NighttimeTexture;
 			internal World.MeshMaterialBlendMode BlendMode;
 			internal ushort GlowAttenuationData;
+			internal Color TextColor;
+			internal Color BackgroundColor;
+			internal string Font;
+			internal Vector2 TextPadding;
+			internal string Text;
 			internal Material() {
 				this.Color = new World.ColorRGBA(255, 255, 255, 255);
 				this.EmissiveColor = new World.ColorRGB(0, 0, 0);
@@ -24,6 +33,10 @@ namespace OpenBve {
 				this.NighttimeTexture = null;
 				this.BlendMode = World.MeshMaterialBlendMode.Normal;
 				this.GlowAttenuationData = 0;
+				this.TextColor = System.Drawing.Color.Black;
+				this.BackgroundColor = System.Drawing.Color.White;
+				this.TextPadding = new Vector2(0, 0);
+				this.Font = "Arial";
 			}
 			internal Material(Material Prototype) {
 				this.Color = Prototype.Color;
@@ -35,6 +48,10 @@ namespace OpenBve {
 				this.NighttimeTexture = Prototype.NighttimeTexture;
 				this.BlendMode = Prototype.BlendMode;
 				this.GlowAttenuationData = Prototype.GlowAttenuationData;
+				this.TextColor = Prototype.TextColor;
+				this.BackgroundColor = Prototype.BackgroundColor;
+				this.TextPadding = Prototype.TextPadding;
+				this.Font = Prototype.Font;
 			}
 		}
 		private class MeshBuilder {
@@ -53,7 +70,8 @@ namespace OpenBve {
 		/// <param name="FileName">The text file to load the animated object from. Must be an absolute file name.</param>
 		/// <param name="Encoding">The encoding the file is saved in. If the file uses a byte order mark, the encoding indicated by the byte order mark is used and the Encoding parameter is ignored.</param>
 		/// <param name="LoadMode">The texture load mode.</param>
-		/// <param name="ForceTextureRepeat">Whether to force TextureWrapMode.Repeat for referenced textures.</param>
+		/// <param name="ForceTextureRepeatX">Whether to force TextureWrapMode.Repeat for referenced textures on the X-axis.</param>
+		/// <param name="ForceTextureRepeatY">Whether to force TextureWrapMode.Repeat for referenced textures on the Y-axis.</param>
 		/// <returns>The object loaded.</returns>
 		internal static ObjectManager.StaticObject ReadObject(string FileName, System.Text.Encoding Encoding, ObjectManager.ObjectLoadMode LoadMode, bool ForceTextureRepeatX, bool ForceTextureRepeatY) {
 			System.Globalization.CultureInfo Culture = System.Globalization.CultureInfo.InvariantCulture;
@@ -68,12 +86,57 @@ namespace OpenBve {
 			// parse lines
 			MeshBuilder Builder = new MeshBuilder();
 			World.Vector3Df[] Normals = new World.Vector3Df[4];
+			bool CommentStarted = false;
 			for (int i = 0; i < Lines.Length; i++) {
 				{
-					// strip away comments
+					// Strip OpenBVE original standard comments
 					int j = Lines[i].IndexOf(';');
-					if (j >= 0) {
+					if (j >= 0)
+					{
 						Lines[i] = Lines[i].Substring(0, j);
+					}
+					// Strip double backslash comments
+					int k = Lines[i].IndexOf("//", StringComparison.Ordinal);
+					if (k >= 0)
+					{
+						Lines[i] = Lines[i].Substring(0, k);
+					}
+					//Strip star backslash comments
+					if (!CommentStarted)
+					{
+						int l = Lines[i].IndexOf("/*", StringComparison.Ordinal);
+						if (l >= 0)
+						{
+							CommentStarted = true;
+							string Part1 = Lines[i].Substring(0, l);
+							int m = Lines[i].IndexOf("*/", StringComparison.Ordinal);
+							string Part2 = "";
+							if (m >= 0)
+							{
+								Part2 = Lines[i].Substring(m + 2, Lines[i].Length - 2);
+							}
+							Lines[i] = String.Concat(Part1, Part2);
+						}
+					}
+					else
+					{
+						int l = Lines[i].IndexOf("*/", StringComparison.Ordinal);
+						if (l >= 0)
+						{
+							CommentStarted = false;
+							if (l + 2 != Lines[i].Length)
+							{
+								Lines[i] = Lines[i].Substring(l + 2, (Lines[i].Length - 2));
+							}
+							else
+							{
+								Lines[i] = "";
+							}
+						}
+						else
+						{
+							Lines[i] = "";
+						}
 					}
 				}
 				// collect arguments
@@ -143,28 +206,28 @@ namespace OpenBve {
 									Interface.AddMessage(Interface.MessageType.Warning, false, "At most 6 arguments are expected in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 								}
 								double vx = 0.0, vy = 0.0, vz = 0.0;
-								if (Arguments.Length >= 1 && Arguments[0].Length > 0 && !Interface.TryParseDoubleVb6(Arguments[0], out vx)) {
+								if (Arguments.Length >= 1 && Arguments[0].Length > 0 && !NumberFormats.TryParseDoubleVb6(Arguments[0], out vx)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument vX in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									vx = 0.0;
 								}
-								if (Arguments.Length >= 2 && Arguments[1].Length > 0 && !Interface.TryParseDoubleVb6(Arguments[1], out vy)) {
+								if (Arguments.Length >= 2 && Arguments[1].Length > 0 && !NumberFormats.TryParseDoubleVb6(Arguments[1], out vy)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument vY in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									vy = 0.0;
 								}
-								if (Arguments.Length >= 3 && Arguments[2].Length > 0 && !Interface.TryParseDoubleVb6(Arguments[2], out vz)) {
+								if (Arguments.Length >= 3 && Arguments[2].Length > 0 && !NumberFormats.TryParseDoubleVb6(Arguments[2], out vz)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument vZ in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									vz = 0.0;
 								}
 								double nx = 0.0, ny = 0.0, nz = 0.0;
-								if (Arguments.Length >= 4 && Arguments[3].Length > 0 && !Interface.TryParseDoubleVb6(Arguments[3], out nx)) {
+								if (Arguments.Length >= 4 && Arguments[3].Length > 0 && !NumberFormats.TryParseDoubleVb6(Arguments[3], out nx)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument nX in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									nx = 0.0;
 								}
-								if (Arguments.Length >= 5 && Arguments[4].Length > 0 && !Interface.TryParseDoubleVb6(Arguments[4], out ny)) {
+								if (Arguments.Length >= 5 && Arguments[4].Length > 0 && !NumberFormats.TryParseDoubleVb6(Arguments[4], out ny)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument nY in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									ny = 0.0;
 								}
-								if (Arguments.Length >= 6 && Arguments[5].Length > 0 && !Interface.TryParseDoubleVb6(Arguments[5], out nz)) {
+								if (Arguments.Length >= 6 && Arguments[5].Length > 0 && !NumberFormats.TryParseDoubleVb6(Arguments[5], out nz)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument nZ in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									nz = 0.0;
 								}
@@ -200,7 +263,7 @@ namespace OpenBve {
 									bool q = true;
 									int[] a = new int[Arguments.Length];
 									for (int j = 0; j < Arguments.Length; j++) {
-										if (!Interface.TryParseIntVb6(Arguments[j], out a[j])) {
+										if (!NumberFormats.TryParseIntVb6(Arguments[j], out a[j])) {
 											Interface.AddMessage(Interface.MessageType.Error, false, "v" + j.ToString(Culture) + " is invalid in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 											q = false;
 											break;
@@ -238,16 +301,16 @@ namespace OpenBve {
 									Interface.AddMessage(Interface.MessageType.Warning, false, "At most 3 arguments are expected in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 								}
 								double x = 0.0;
-								if (Arguments.Length >= 1 && Arguments[0].Length > 0 && !Interface.TryParseDoubleVb6(Arguments[0], out x)) {
+								if (Arguments.Length >= 1 && Arguments[0].Length > 0 && !NumberFormats.TryParseDoubleVb6(Arguments[0], out x)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument HalfWidth in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									x = 1.0;
 								}
 								double y = x, z = x;
-								if (Arguments.Length >= 2 && Arguments[1].Length > 0 && !Interface.TryParseDoubleVb6(Arguments[1], out y)) {
+								if (Arguments.Length >= 2 && Arguments[1].Length > 0 && !NumberFormats.TryParseDoubleVb6(Arguments[1], out y)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument HalfHeight in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									y = 1.0;
 								}
-								if (Arguments.Length >= 3 && Arguments[2].Length > 0 && !Interface.TryParseDoubleVb6(Arguments[2], out z)) {
+								if (Arguments.Length >= 3 && Arguments[2].Length > 0 && !NumberFormats.TryParseDoubleVb6(Arguments[2], out z)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument HalfDepth in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									z = 1.0;
 								}
@@ -259,7 +322,7 @@ namespace OpenBve {
 									Interface.AddMessage(Interface.MessageType.Warning, false, "At most 4 arguments are expected in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 								}
 								int n = 8;
-								if (Arguments.Length >= 1 && Arguments[0].Length > 0 && !Interface.TryParseIntVb6(Arguments[0], out n)) {
+								if (Arguments.Length >= 1 && Arguments[0].Length > 0 && !NumberFormats.TryParseIntVb6(Arguments[0], out n)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument n in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									n = 8;
 								}
@@ -268,15 +331,15 @@ namespace OpenBve {
 									n = 8;
 								}
 								double r1 = 0.0, r2 = 0.0, h = 1.0;
-								if (Arguments.Length >= 2 && Arguments[1].Length > 0 && !Interface.TryParseDoubleVb6(Arguments[1], out r1)) {
+								if (Arguments.Length >= 2 && Arguments[1].Length > 0 && !NumberFormats.TryParseDoubleVb6(Arguments[1], out r1)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument UpperRadius in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									r1 = 1.0;
 								}
-								if (Arguments.Length >= 3 && Arguments[2].Length > 0 && !Interface.TryParseDoubleVb6(Arguments[2], out r2)) {
+								if (Arguments.Length >= 3 && Arguments[2].Length > 0 && !NumberFormats.TryParseDoubleVb6(Arguments[2], out r2)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument LowerRadius in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									r2 = 1.0;
 								}
-								if (Arguments.Length >= 4 && Arguments[3].Length > 0 && !Interface.TryParseDoubleVb6(Arguments[3], out h)) {
+								if (Arguments.Length >= 4 && Arguments[3].Length > 0 && !NumberFormats.TryParseDoubleVb6(Arguments[3], out h)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument Height in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									h = 1.0;
 								}
@@ -289,15 +352,15 @@ namespace OpenBve {
 									Interface.AddMessage(Interface.MessageType.Warning, false, "At most 3 arguments are expected in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 								}
 								double x = 0.0, y = 0.0, z = 0.0;
-								if (Arguments.Length >= 1 && Arguments[0].Length > 0 && !Interface.TryParseDoubleVb6(Arguments[0], out x)) {
+								if (Arguments.Length >= 1 && Arguments[0].Length > 0 && !NumberFormats.TryParseDoubleVb6(Arguments[0], out x)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument X in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									x = 0.0;
 								}
-								if (Arguments.Length >= 2 && Arguments[1].Length > 0 && !Interface.TryParseDoubleVb6(Arguments[1], out y)) {
+								if (Arguments.Length >= 2 && Arguments[1].Length > 0 && !NumberFormats.TryParseDoubleVb6(Arguments[1], out y)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument Y in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									y = 0.0;
 								}
-								if (Arguments.Length >= 3 && Arguments[2].Length > 0 && !Interface.TryParseDoubleVb6(Arguments[2], out z)) {
+								if (Arguments.Length >= 3 && Arguments[2].Length > 0 && !NumberFormats.TryParseDoubleVb6(Arguments[2], out z)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument Z in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									z = 0.0;
 								}
@@ -313,21 +376,21 @@ namespace OpenBve {
 									Interface.AddMessage(Interface.MessageType.Warning, false, "At most 3 arguments are expected in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 								}
 								double x = 1.0, y = 1.0, z = 1.0;
-								if (Arguments.Length >= 1 && Arguments[0].Length > 0 && !Interface.TryParseDoubleVb6(Arguments[0], out x)) {
+								if (Arguments.Length >= 1 && Arguments[0].Length > 0 && !NumberFormats.TryParseDoubleVb6(Arguments[0], out x)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument X in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									x = 1.0;
 								} else if (x == 0.0) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "X is required to be different from zero in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									x = 1.0;
 								}
-								if (Arguments.Length >= 2 && Arguments[1].Length > 0 && !Interface.TryParseDoubleVb6(Arguments[1], out y)) {
+								if (Arguments.Length >= 2 && Arguments[1].Length > 0 && !NumberFormats.TryParseDoubleVb6(Arguments[1], out y)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument Y in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									y = 1.0;
 								} else if (y == 0.0) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Y is required to be different from zero in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									y = 1.0;
 								}
-								if (Arguments.Length >= 3 && Arguments[2].Length > 0 && !Interface.TryParseDoubleVb6(Arguments[2], out z)) {
+								if (Arguments.Length >= 3 && Arguments[2].Length > 0 && !NumberFormats.TryParseDoubleVb6(Arguments[2], out z)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument Z in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									z = 1.0;
 								} else if (z == 0.0) {
@@ -346,19 +409,19 @@ namespace OpenBve {
 									Interface.AddMessage(Interface.MessageType.Warning, false, "At most 4 arguments are expected in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 								}
 								double x = 0.0, y = 0.0, z = 0.0, a = 0.0;
-								if (Arguments.Length >= 1 && Arguments[0].Length > 0 && !Interface.TryParseDoubleVb6(Arguments[0], out x)) {
+								if (Arguments.Length >= 1 && Arguments[0].Length > 0 && !NumberFormats.TryParseDoubleVb6(Arguments[0], out x)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument X in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									x = 0.0;
 								}
-								if (Arguments.Length >= 2 && Arguments[1].Length > 0 && !Interface.TryParseDoubleVb6(Arguments[1], out y)) {
+								if (Arguments.Length >= 2 && Arguments[1].Length > 0 && !NumberFormats.TryParseDoubleVb6(Arguments[1], out y)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument Y in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									y = 0.0;
 								}
-								if (Arguments.Length >= 3 && Arguments[2].Length > 0 && !Interface.TryParseDoubleVb6(Arguments[2], out z)) {
+								if (Arguments.Length >= 3 && Arguments[2].Length > 0 && !NumberFormats.TryParseDoubleVb6(Arguments[2], out z)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument Z in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									z = 0.0;
 								}
-								if (Arguments.Length >= 4 && Arguments[3].Length > 0 && !Interface.TryParseDoubleVb6(Arguments[3], out a)) {
+								if (Arguments.Length >= 4 && Arguments[3].Length > 0 && !NumberFormats.TryParseDoubleVb6(Arguments[3], out a)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument Angle in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									a = 0.0;
 								}
@@ -390,31 +453,31 @@ namespace OpenBve {
 								double dx = 0.0, dy = 0.0, dz = 0.0;
 								double sx = 0.0, sy = 0.0, sz = 0.0;
 								double r = 0.0;
-								if (Arguments.Length >= 1 && Arguments[0].Length > 0 && !Interface.TryParseDoubleVb6(Arguments[0], out dx)) {
+								if (Arguments.Length >= 1 && Arguments[0].Length > 0 && !NumberFormats.TryParseDoubleVb6(Arguments[0], out dx)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument dX in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									dx = 0.0;
 								}
-								if (Arguments.Length >= 2 && Arguments[1].Length > 0 && !Interface.TryParseDoubleVb6(Arguments[1], out dy)) {
+								if (Arguments.Length >= 2 && Arguments[1].Length > 0 && !NumberFormats.TryParseDoubleVb6(Arguments[1], out dy)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument dY in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									dy = 0.0;
 								}
-								if (Arguments.Length >= 3 && Arguments[2].Length > 0 && !Interface.TryParseDoubleVb6(Arguments[2], out dz)) {
+								if (Arguments.Length >= 3 && Arguments[2].Length > 0 && !NumberFormats.TryParseDoubleVb6(Arguments[2], out dz)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument dZ in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									dz = 0.0;
 								}
-								if (Arguments.Length >= 4 && Arguments[3].Length > 0 && !Interface.TryParseDoubleVb6(Arguments[3], out sx)) {
+								if (Arguments.Length >= 4 && Arguments[3].Length > 0 && !NumberFormats.TryParseDoubleVb6(Arguments[3], out sx)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument sX in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									sx = 0.0;
 								}
-								if (Arguments.Length >= 5 && Arguments[4].Length > 0 && !Interface.TryParseDoubleVb6(Arguments[4], out sy)) {
+								if (Arguments.Length >= 5 && Arguments[4].Length > 0 && !NumberFormats.TryParseDoubleVb6(Arguments[4], out sy)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument sY in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									sy = 0.0;
 								}
-								if (Arguments.Length >= 6 && Arguments[5].Length > 0 && !Interface.TryParseDoubleVb6(Arguments[5], out sz)) {
+								if (Arguments.Length >= 6 && Arguments[5].Length > 0 && !NumberFormats.TryParseDoubleVb6(Arguments[5], out sz)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument sZ in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									sz = 0.0;
 								}
-								if (Arguments.Length >= 7 && Arguments[6].Length > 0 && !Interface.TryParseDoubleVb6(Arguments[6], out r)) {
+								if (Arguments.Length >= 7 && Arguments[6].Length > 0 && !NumberFormats.TryParseDoubleVb6(Arguments[6], out r)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument Ratio in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									r = 0.0;
 								}
@@ -445,28 +508,28 @@ namespace OpenBve {
 									Interface.AddMessage(Interface.MessageType.Warning, false, "At most 4 arguments are expected in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 								}
 								int r = 0, g = 0, b = 0, a = 255;
-								if (Arguments.Length >= 1 && Arguments[0].Length > 0 && !Interface.TryParseIntVb6(Arguments[0], out r)) {
+								if (Arguments.Length >= 1 && Arguments[0].Length > 0 && !NumberFormats.TryParseIntVb6(Arguments[0], out r)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument Red in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									r = 0;
 								} else if (r < 0 | r > 255) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Red is required to be within the range from 0 to 255 in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									r = r < 0 ? 0 : 255;
 								}
-								if (Arguments.Length >= 2 && Arguments[1].Length > 0 && !Interface.TryParseIntVb6(Arguments[1], out g)) {
+								if (Arguments.Length >= 2 && Arguments[1].Length > 0 && !NumberFormats.TryParseIntVb6(Arguments[1], out g)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument Green in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									g = 0;
 								} else if (g < 0 | g > 255) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Green is required to be within the range from 0 to 255 in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									g = g < 0 ? 0 : 255;
 								}
-								if (Arguments.Length >= 3 && Arguments[2].Length > 0 && !Interface.TryParseIntVb6(Arguments[2], out b)) {
+								if (Arguments.Length >= 3 && Arguments[2].Length > 0 && !NumberFormats.TryParseIntVb6(Arguments[2], out b)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument Blue in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									b = 0;
 								} else if (b < 0 | b > 255) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Blue is required to be within the range from 0 to 255 in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									b = b < 0 ? 0 : 255;
 								}
-								if (Arguments.Length >= 4 && Arguments[3].Length > 0 && !Interface.TryParseIntVb6(Arguments[3], out a)) {
+								if (Arguments.Length >= 4 && Arguments[3].Length > 0 && !NumberFormats.TryParseIntVb6(Arguments[3], out a)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument Alpha in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									a = 255;
 								} else if (a < 0 | a > 255) {
@@ -501,21 +564,21 @@ namespace OpenBve {
 									Interface.AddMessage(Interface.MessageType.Warning, false, "At most 3 arguments are expected in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 								}
 								int r = 0, g = 0, b = 0;
-								if (Arguments.Length >= 1 && Arguments[0].Length > 0 && !Interface.TryParseIntVb6(Arguments[0], out r)) {
+								if (Arguments.Length >= 1 && Arguments[0].Length > 0 && !NumberFormats.TryParseIntVb6(Arguments[0], out r)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument Red in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									r = 0;
 								} else if (r < 0 | r > 255) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Red is required to be within the range from 0 to 255 in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									r = r < 0 ? 0 : 255;
 								}
-								if (Arguments.Length >= 2 && Arguments[1].Length > 0 && !Interface.TryParseIntVb6(Arguments[1], out g)) {
+								if (Arguments.Length >= 2 && Arguments[1].Length > 0 && !NumberFormats.TryParseIntVb6(Arguments[1], out g)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument Green in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									g = 0;
 								} else if (g < 0 | g > 255) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Green is required to be within the range from 0 to 255 in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									g = g < 0 ? 0 : 255;
 								}
-								if (Arguments.Length >= 3 && Arguments[2].Length > 0 && !Interface.TryParseIntVb6(Arguments[2], out b)) {
+								if (Arguments.Length >= 3 && Arguments[2].Length > 0 && !NumberFormats.TryParseIntVb6(Arguments[2], out b)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument Blue in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									b = 0;
 								} else if (b < 0 | b > 255) {
@@ -551,21 +614,21 @@ namespace OpenBve {
 									Interface.AddMessage(Interface.MessageType.Warning, false, "At most 3 arguments are expected in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 								}
 								int r = 0, g = 0, b = 0;
-								if (Arguments.Length >= 1 && Arguments[0].Length > 0 && !Interface.TryParseIntVb6(Arguments[0], out r)) {
+								if (Arguments.Length >= 1 && Arguments[0].Length > 0 && !NumberFormats.TryParseIntVb6(Arguments[0], out r)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument Red in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									r = 0;
 								} else if (r < 0 | r > 255) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Red is required to be within the range from 0 to 255 in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									r = r < 0 ? 0 : 255;
 								}
-								if (Arguments.Length >= 2 && Arguments[1].Length > 0 && !Interface.TryParseIntVb6(Arguments[1], out g)) {
+								if (Arguments.Length >= 2 && Arguments[1].Length > 0 && !NumberFormats.TryParseIntVb6(Arguments[1], out g)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument Green in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									g = 0;
 								} else if (g < 0 | g > 255) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Green is required to be within the range from 0 to 255 in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									g = g < 0 ? 0 : 255;
 								}
-								if (Arguments.Length >= 3 && Arguments[2].Length > 0 && !Interface.TryParseIntVb6(Arguments[2], out b)) {
+								if (Arguments.Length >= 3 && Arguments[2].Length > 0 && !NumberFormats.TryParseIntVb6(Arguments[2], out b)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument Blue in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									b = 0;
 								} else if (b < 0 | b > 255) {
@@ -577,10 +640,12 @@ namespace OpenBve {
 									Builder.Materials[j].TransparentColorUsed = true;
 								}
 							} break;
+						case "setblendingmode":
 						case "setblendmode":
 						case "blendmode":
 							{
-								if (cmd == "setblendmode" & IsB3D) {
+								if ((cmd == "setblendmode" || cmd == "setblendingmode") & IsB3D)
+								{
 									Interface.AddMessage(Interface.MessageType.Warning, false, "SetBlendMode is not a supported command - did you mean BlendMode? - at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 								} else if (cmd == "blendmode" & !IsB3D) {
 									Interface.AddMessage(Interface.MessageType.Warning, false, "BlendMode is not a supported command - did you mean SetBlendMode? - at line " + (i + 1).ToString(Culture) + " in file " + FileName);
@@ -595,6 +660,7 @@ namespace OpenBve {
 											blendmode = World.MeshMaterialBlendMode.Normal;
 											break;
 										case "additive":
+										case "glow":
 											blendmode = World.MeshMaterialBlendMode.Additive;
 											break;
 										default:
@@ -604,7 +670,7 @@ namespace OpenBve {
 									}
 								}
 								double glowhalfdistance = 0.0;
-								if (Arguments.Length >= 2 && Arguments[1].Length > 0 && !Interface.TryParseDoubleVb6(Arguments[1], out glowhalfdistance)) {
+								if (Arguments.Length >= 2 && Arguments[1].Length > 0 && !NumberFormats.TryParseDoubleVb6(Arguments[1], out glowhalfdistance)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument GlowHalfDistance in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									glowhalfdistance = 0;
 								}
@@ -636,10 +702,10 @@ namespace OpenBve {
 								}
 								string tday = null, tnight = null;
 								if (Arguments.Length >= 1 && Arguments[0].Length != 0) {
-									if (Interface.ContainsInvalidPathChars(Arguments[0])) {
+									if (Path.ContainsInvalidChars(Arguments[0])) {
 										Interface.AddMessage(Interface.MessageType.Error, false, "DaytimeTexture contains illegal characters in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									} else {
-										tday = Interface.GetCombinedFileName(System.IO.Path.GetDirectoryName(FileName), Arguments[0]);
+										tday = OpenBveApi.Path.CombineFile(System.IO.Path.GetDirectoryName(FileName), Arguments[0]);
 										if (!System.IO.File.Exists(tday)) {
 											Interface.AddMessage(Interface.MessageType.Error, true, "DaytimeTexture " + tday + " could not be found in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 											tday = null;
@@ -650,10 +716,10 @@ namespace OpenBve {
 									if (Arguments[0].Length == 0) {
 										Interface.AddMessage(Interface.MessageType.Error, true, "DaytimeTexture is required to be specified in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									} else {
-										if (Interface.ContainsInvalidPathChars(Arguments[1])) {
+										if (Path.ContainsInvalidChars(Arguments[1])) {
 											Interface.AddMessage(Interface.MessageType.Error, false, "NighttimeTexture contains illegal characters in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 										} else {
-											tnight = Interface.GetCombinedFileName(System.IO.Path.GetDirectoryName(FileName), Arguments[1]);
+											tnight = OpenBveApi.Path.CombineFile(System.IO.Path.GetDirectoryName(FileName), Arguments[1]);
 											if (!System.IO.File.Exists(tnight)) {
 												Interface.AddMessage(Interface.MessageType.Error, true, "The NighttimeTexture " + tnight + " could not be found in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 												tnight = null;
@@ -666,6 +732,157 @@ namespace OpenBve {
 									Builder.Materials[j].NighttimeTexture = tnight;
 								}
 							} break;
+						case "settext":
+						case "text":
+							{
+								Interface.AddMessage(Interface.MessageType.Information, false, "" + cmd + " is only supported in OpenBVE versions 1.4.4.0 and above at line " + (i + 1).ToString(Culture) + " in file " + FileName);
+								if (cmd == "settext" & IsB3D)
+								{
+									Interface.AddMessage(Interface.MessageType.Warning, false,
+									  "SetText is not a supported command - did you mean Text? - at line " + (i + 1).ToString(Culture) + " in file " +
+									  FileName);
+								}
+								else if (cmd == "text" & !IsB3D)
+								{
+									Interface.AddMessage(Interface.MessageType.Warning, false,
+									  "Text is not a supported command - did you mean SetText? - at line " + (i + 1).ToString(Culture) + " in file " +
+									  FileName);
+								}
+
+								if (Arguments.Length > 2)
+								{
+									Interface.AddMessage(Interface.MessageType.Warning, false,
+									  "At most 2 arguments are expected in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " +
+									  FileName);
+								}
+								string text = Arguments[0];
+
+								for (int j = 0; j < Builder.Materials.Length; j++)
+								{
+									Builder.Materials[j].Text = text;
+								}
+							}
+							break;
+						case "settextcolor":
+						case "textcolor":
+						{
+								if (cmd == "settextcolor" & IsB3D)
+								{
+									Interface.AddMessage(Interface.MessageType.Warning, false,
+									  "SetTextColor is not a supported command - did you mean TextColor? - at line " + (i + 1).ToString(Culture) + " in file " + FileName);
+								}
+								else if (cmd == "textcolor" & !IsB3D)
+								{
+									Interface.AddMessage(Interface.MessageType.Warning, false,
+									  "TextColor is not a supported command - did you mean SetTextColor? - at line " + (i + 1).ToString(Culture) + " in file " +
+									  FileName);
+								}
+
+								if (Arguments.Length != 3)
+								{
+									Interface.AddMessage(Interface.MessageType.Warning, false,
+									  "3 arguments are expected in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
+								}
+								int r = 0, g = 0, b = 0;
+								int.TryParse(Arguments[0], out r);
+								int.TryParse(Arguments[1], out g);
+								int.TryParse(Arguments[2], out b);
+								Color textColor = Color.FromArgb(r, g, b);
+								for (int j = 0; j < Builder.Materials.Length; j++)
+								{
+									Builder.Materials[j].TextColor = textColor;
+								}
+							}
+							break;
+						case "setbackgroundcolor":
+						case "backgroundcolor":
+							{
+								if (cmd == "setbackgroundcolor" & IsB3D)
+								{
+									Interface.AddMessage(Interface.MessageType.Warning, false,
+									  "SetBackgroundColor is not a supported command - did you mean TextColor? - at line " + (i + 1).ToString(Culture) + " in file " + FileName);
+								}
+								else if (cmd == "backgroundcolor" & !IsB3D)
+								{
+									Interface.AddMessage(Interface.MessageType.Warning, false,
+									  "BackgroundColor is not a supported command - did you mean SetBackgroundColor? - at line " + (i + 1).ToString(Culture) + " in file " + FileName);
+								}
+
+								if (Arguments.Length != 3)
+								{
+									Interface.AddMessage(Interface.MessageType.Warning, false,
+									  "3 arguments are expected in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
+								}
+								int r = 0, g = 0, b = 0;
+								int.TryParse(Arguments[0], out r);
+								int.TryParse(Arguments[1], out g);
+								int.TryParse(Arguments[2], out b);
+								Color textColor = Color.FromArgb(r, g, b);
+								for (int j = 0; j < Builder.Materials.Length; j++)
+								{
+									Builder.Materials[j].BackgroundColor = textColor;
+								}
+							}
+							break;
+						case "settextpadding":
+						case "textpadding":
+							{
+								if (cmd == "settextpadding" & IsB3D)
+								{
+									Interface.AddMessage(Interface.MessageType.Warning, false,
+									  "SetTextPadding is not a supported command - did you mean TextPadding? - at line " + (i + 1).ToString(Culture) + " in file " + FileName);
+								}
+								else if (cmd == "backgroundcolor" & !IsB3D)
+								{
+									Interface.AddMessage(Interface.MessageType.Warning, false,
+									  "TextPadding is not a supported command - did you mean SetTextPadding? - at line " + (i + 1).ToString(Culture) + " in file " + FileName);
+								}
+
+								if (Arguments.Length > 2)
+								{
+									Interface.AddMessage(Interface.MessageType.Warning, false,
+									  "At most 2 arguments are expected in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
+								}
+								Vector2 Padding = new Vector2(0, 0);
+								double.TryParse(Arguments[0], out Padding.X);
+								double.TryParse(Arguments[1], out Padding.Y);
+								for (int j = 0; j < Builder.Materials.Length; j++)
+								{
+									Builder.Materials[j].TextPadding = Padding;
+								}
+							}
+							break;
+						case "setfont":
+						case "font":
+							{
+								if (cmd == "setfont" & IsB3D)
+								{
+									Interface.AddMessage(Interface.MessageType.Warning, false,
+									  "SetFont is not a supported command - did you mean Font? - at line " + (i + 1).ToString(Culture) + " in file " + FileName);
+								}
+								else if (cmd == "backgroundcolor" & !IsB3D)
+								{
+									Interface.AddMessage(Interface.MessageType.Warning, false,
+									  "Font is not a supported command - did you mean SetFont? - at line " + (i + 1).ToString(Culture) + " in file " + FileName);
+								}
+
+								if (Arguments.Length > 1)
+								{
+									Interface.AddMessage(Interface.MessageType.Warning, false,
+									  "1 argument is expected in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
+								}
+								if (!FontAvailable(Arguments[0]))
+								{
+									Interface.AddMessage(Interface.MessageType.Warning, false,
+									  "Font " + Arguments[0] + "is not available at line " + (i + 1).ToString(Culture) + " in file " + FileName);
+								}
+								for (int j = 0; j < Builder.Materials.Length; j++)
+								{
+									Builder.Materials[j].Font = Arguments[0];
+								}
+
+							}
+							break; 
 						case "settexturecoordinates":
 						case "coordinates":
 							{
@@ -678,15 +895,15 @@ namespace OpenBve {
 									Interface.AddMessage(Interface.MessageType.Warning, false, "At most 3 arguments are expected in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 								}
 								int j = 0; float x = 0.0f, y = 0.0f;
-								if (Arguments.Length >= 1 && Arguments[0].Length > 0 && !Interface.TryParseIntVb6(Arguments[0], out j)) {
+								if (Arguments.Length >= 1 && Arguments[0].Length > 0 && !NumberFormats.TryParseIntVb6(Arguments[0], out j)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument VertexIndex in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									j = 0;
 								}
-								if (Arguments.Length >= 2 && Arguments[1].Length > 0 && !Interface.TryParseFloatVb6(Arguments[1], out x)) {
+								if (Arguments.Length >= 2 && Arguments[1].Length > 0 && !NumberFormats.TryParseFloatVb6(Arguments[1], out x)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument X in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									x = 0.0f;
 								}
-								if (Arguments.Length >= 3 && Arguments[2].Length > 0 && !Interface.TryParseFloatVb6(Arguments[2], out y)) {
+								if (Arguments.Length >= 3 && Arguments[2].Length > 0 && !NumberFormats.TryParseFloatVb6(Arguments[2], out y)) {
 									Interface.AddMessage(Interface.MessageType.Error, false, "Invalid argument Y in " + Command + " at line " + (i + 1).ToString(Culture) + " in file " + FileName);
 									y = 0.0f;
 								}
@@ -785,10 +1002,10 @@ namespace OpenBve {
 				for (int j = 0; j < n; j++) {
 					if (i == 0 & lowercap) {
 						// lower cap
-						Builder.Faces[f + n + i].Vertices[j] = new World.MeshFaceVertex(v + 2 * (n - j - 1));
+						Builder.Faces[f + n + i].Vertices[j] = new World.MeshFaceVertex(v + 2 * j + 1);
 					} else {
 						// upper cap
-						Builder.Faces[f + n + i].Vertices[j] = new World.MeshFaceVertex(v + 2 * j + 1);
+						Builder.Faces[f + n + i].Vertices[j] = new World.MeshFaceVertex(v + 2 * (n - j - 1));
 					}
 				}
 			}
@@ -1001,21 +1218,33 @@ namespace OpenBve {
 							}
 						}
 					}
-					if (Builder.Materials[i].DaytimeTexture != null) {
-						int tday = TextureManager.RegisterTexture(Builder.Materials[i].DaytimeTexture, Builder.Materials[i].TransparentColor, Builder.Materials[i].TransparentColorUsed ? (byte)1 : (byte)0, WrapX, WrapY, LoadMode != ObjectManager.ObjectLoadMode.Normal);
-						if (LoadMode == ObjectManager.ObjectLoadMode.PreloadTextures) {
-							TextureManager.UseTexture(tday, TextureManager.UseMode.Normal);
+					if (Builder.Materials[i].DaytimeTexture != null || Builder.Materials[i].Text != null)
+					{
+						int tday;
+						if (Builder.Materials[i].Text != null)
+						{
+							Bitmap bitmap = null;
+							if (Builder.Materials[i].DaytimeTexture != null)
+							{
+								bitmap = new Bitmap(Builder.Materials[i].DaytimeTexture);
+							}
+							Bitmap texture = TextOverlay.AddTextToBitmap(bitmap, Builder.Materials[i].Text, Builder.Materials[i].Font, 12, Builder.Materials[i].BackgroundColor, Builder.Materials[i].TextColor, Builder.Materials[i].TextPadding);
+							tday = TextureManager.RegisterTexture(texture, Builder.Materials[i].TransparentColor);
+						}
+						else
+						{
+							tday = TextureManager.RegisterTexture(Builder.Materials[i].DaytimeTexture, Builder.Materials[i].TransparentColor, Builder.Materials[i].TransparentColorUsed ? (byte)1 : (byte)0, WrapX, WrapY, LoadMode != ObjectManager.ObjectLoadMode.Normal);
+
 						}
 						Object.Mesh.Materials[mm + i].DaytimeTextureIndex = tday;
-					} else {
+					}
+					else
+					{
 						Object.Mesh.Materials[mm + i].DaytimeTextureIndex = -1;
 					}
 					Object.Mesh.Materials[mm + i].EmissiveColor = Builder.Materials[i].EmissiveColor;
 					if (Builder.Materials[i].NighttimeTexture != null) {
 						int tnight = TextureManager.RegisterTexture(Builder.Materials[i].NighttimeTexture, Builder.Materials[i].TransparentColor, Builder.Materials[i].TransparentColorUsed ? (byte)1 : (byte)0, WrapX, WrapY, LoadMode != ObjectManager.ObjectLoadMode.Normal);
-						if (LoadMode == ObjectManager.ObjectLoadMode.PreloadTextures) {
-							TextureManager.UseTexture(tnight, TextureManager.UseMode.Normal);
-						}
 						Object.Mesh.Materials[mm + i].NighttimeTextureIndex = tnight;
 					} else {
 						Object.Mesh.Materials[mm + i].NighttimeTextureIndex = -1;
@@ -1027,5 +1256,33 @@ namespace OpenBve {
 			}
 		}
 
+		private static Bitmap TextToBitmap(string txt, string fontname, int fontsize, Color bgcolor, Color fcolor, Vector2 Padding)
+		{
+			SizeF size;
+			Bitmap bmp = new Bitmap(1024, 1024);
+			using (Graphics graphics = Graphics.FromImage(bmp))
+			{
+				Font font = new Font(fontname, fontsize);
+				size = graphics.MeasureString(txt, font);
+				graphics.FillRectangle(new SolidBrush(bgcolor), 0, 0, size.Width + (int)Padding.X * 2, size.Height + (int)Padding.Y * 2);
+				graphics.DrawString(txt, font, new SolidBrush(fcolor), (int)Padding.X, (int)Padding.Y);
+				graphics.Flush();
+				font.Dispose();
+				graphics.Dispose();
+			}
+			Rectangle cropArea = new Rectangle(0, 0, (int)size.Width + (int)Padding.X * 2, (int)size.Height + (int)Padding.Y * 2);
+			return bmp.Clone(cropArea, bmp.PixelFormat);
+		}
+
+		private static bool FontAvailable(string fontName)
+		{
+			using (var testFont = new Font(fontName, 8))
+			{
+				return 0 == string.Compare(
+				  fontName,
+				  testFont.Name,
+				  StringComparison.InvariantCultureIgnoreCase);
+			}
+		}
 	}
 }

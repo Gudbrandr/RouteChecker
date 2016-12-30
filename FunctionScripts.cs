@@ -7,27 +7,27 @@ namespace OpenBve {
 		internal enum Instructions : int {
 			SystemHalt, SystemConstant, SystemConstantArray, SystemValue, SystemDelta,
 			StackCopy, StackSwap,
-			MathPlus, MathSubtract, MathMinus, MathTimes, MathDivide, MathReciprocal, MathPower,
+			MathPlus, MathSubtract, MathMinus, MathTimes, MathDivide, MathReciprocal, MathPower, MathRandom, MathRandomInt,
 			MathIncrement, MathDecrement, MathFusedMultiplyAdd,
 			MathQuotient, MathMod, MathFloor, MathCeiling, MathRound, MathMin, MathMax, MathAbs, MathSign,
 			MathExp, MathLog, MathSqrt, MathSin, MathCos, MathTan, MathArcTan,
 			CompareEqual, CompareUnequal, CompareLess, CompareGreater, CompareLessEqual, CompareGreaterEqual, CompareConditional,
 			LogicalNot, LogicalAnd, LogicalOr, LogicalNand, LogicalNor, LogicalXor,
-			TimeSecondsSinceMidnight, CameraDistance,
+			TimeSecondsSinceMidnight, CameraDistance,CameraView,
 			TrainCars,
 			TrainSpeed, TrainSpeedometer, TrainAcceleration, TrainAccelerationMotor,
 			TrainSpeedOfCar, TrainSpeedometerOfCar, TrainAccelerationOfCar, TrainAccelerationMotorOfCar,
-			TrainDistance, TrainDistanceToCar, TrainTrackDistance, TrainTrackDistanceToCar,
+			TrainDistance, TrainDistanceToCar, TrainTrackDistance, TrainTrackDistanceToCar, CurveRadius, FrontAxleCurveRadius, RearAxleCurveRadius, CurveCant, Odometer, OdometerOfCar,
 			Doors, DoorsIndex,
 			LeftDoors, LeftDoorsIndex, RightDoors, RightDoorsIndex,
 			LeftDoorsTarget, LeftDoorsTargetIndex, RightDoorsTarget, RightDoorsTargetIndex,
-			ReverserNotch, PowerNotch, PowerNotches, BrakeNotch, BrakeNotches, BrakeNotchLinear, BrakeNotchesLinear, EmergencyBrake,
+			ReverserNotch, PowerNotch, PowerNotches, BrakeNotch, BrakeNotches, BrakeNotchLinear, BrakeNotchesLinear, EmergencyBrake, Klaxon,
 			HasAirBrake, HoldBrake, HasHoldBrake, ConstSpeed, HasConstSpeed,
 			BrakeMainReservoir, BrakeEqualizingReservoir, BrakeBrakePipe, BrakeBrakeCylinder, BrakeStraightAirPipe,
 			BrakeMainReservoirOfCar, BrakeEqualizingReservoirOfCar, BrakeBrakePipeOfCar, BrakeBrakeCylinderOfCar, BrakeStraightAirPipeOfCar,
 			SafetyPluginAvailable, SafetyPluginState,
 			TimetableVisible,
-			SectionAspectNumber
+			SectionAspectNumber, CurrentObjectState
 		}
 
 		// function script
@@ -36,8 +36,8 @@ namespace OpenBve {
 			internal double[] Stack;
 			internal double[] Constants;
 			internal double LastResult;
-			internal double Perform(TrainManager.Train Train, int CarIndex, World.Vector3D Position, double TrackPosition, int SectionIndex, double TimeElapsed) {
-				ExecuteFunctionScript(this, Train, CarIndex, Position, TrackPosition, SectionIndex, TimeElapsed);
+			internal double Perform(TrainManager.Train Train, int CarIndex, World.Vector3D Position, double TrackPosition, int SectionIndex, bool IsPartOfTrain, double TimeElapsed, int CurrentState) {
+				ExecuteFunctionScript(this, Train, CarIndex, Position, TrackPosition, SectionIndex, IsPartOfTrain, TimeElapsed, CurrentState);
 				return this.LastResult;
 			}
 			internal FunctionScript Clone() {
@@ -46,7 +46,7 @@ namespace OpenBve {
 		}
 
 		// execute function script
-		private static void ExecuteFunctionScript(FunctionScript Function, TrainManager.Train Train, int CarIndex, World.Vector3D Position, double TrackPosition, int SectionIndex, double TimeElapsed) {
+		private static void ExecuteFunctionScript(FunctionScript Function, TrainManager.Train Train, int CarIndex, World.Vector3D Position, double TrackPosition, int SectionIndex, bool IsPartOfTrain, double TimeElapsed, int CurrentState) {
 			int s = 0, c = 0;
 			for (int i = 0; i < Function.Instructions.Length; i++) {
 				switch (Function.Instructions[i]) {
@@ -122,20 +122,35 @@ namespace OpenBve {
 							} else if (b == 8.0) {
 								double t = a * a; t *= t;
 								Function.Stack[s - 2] = t * t;
-							} else if (a > 0.0) {
-								Function.Stack[s - 2] = Math.Pow(a, b);
-							} else if (a < 0.0) {
-								double x = Math.Round(b);
-								if (b - x >= -0.0001 & b - x <= 0.0001) {
-									Function.Stack[s - 2] = Math.Pow(-a, x) * Math.Cos(Math.PI * x);
-								} else {
-									Function.Stack[s - 2] = 0.0;
-								}
-							} else {
+							} else if (b == 0.0) {
 								Function.Stack[s - 2] = 1.0;
+							} else if (b < 0.0) {
+								Function.Stack[s - 2] = 0.0;
+							} else {
+								Function.Stack[s - 2] = Math.Pow(a, b);
 							}
 							s--; break;
 						}
+                    case Instructions.MathRandom:
+                        {
+                            //Generates a random number between two given doubles
+                            double min = Function.Stack[s - 2];
+                            double max = Function.Stack[s - 1];
+                            var randomGenerator = new Random();
+                            Function.Stack[s - 2] = min + randomGenerator.NextDouble() * (max - min);
+                            s--;
+                        }
+                        break;
+                    case Instructions.MathRandomInt:
+                        {
+                            //Generates a random number between two given doubles
+                            int min = (int)Function.Stack[s - 2];
+                            int max = (int)Function.Stack[s - 1];
+                            var randomGenerator = new Random();
+                            Function.Stack[s - 2] = randomGenerator.Next(min, max);
+                            s--;
+                        }
+                        break;
 					case Instructions.MathIncrement:
 						Function.Stack[s - 1] += 1.0;
 						break;
@@ -234,6 +249,9 @@ namespace OpenBve {
 					case Instructions.LogicalXor:
 						Function.Stack[s - 2] = Function.Stack[s - 2] != 0.0 ^ Function.Stack[s - 1] != 0.0 ? 1.0 : 0.0;
 						s--; break;
+					case Instructions.CurrentObjectState:
+						Function.Stack[s] = CurrentState;
+						break;
 						// time/camera
 					case Instructions.TimeSecondsSinceMidnight:
 						Function.Stack[s] = Game.SecondsSinceMidnight;
@@ -246,6 +264,17 @@ namespace OpenBve {
 							Function.Stack[s] = Math.Sqrt(dx * dx + dy * dy + dz * dz);
 							s++;
 						} break;
+					case Instructions.CameraView:
+						//Returns whether the camera is in interior or exterior mode
+						if (World.CameraMode == World.CameraViewMode.Interior)
+						{
+							Function.Stack[s] = 0;
+						}
+						else
+						{
+							Function.Stack[s] = 1;
+						}
+						s++; break;
 						// train
 					case Instructions.TrainCars:
 						if (Train != null) {
@@ -400,6 +429,89 @@ namespace OpenBve {
 							Function.Stack[s] = 0.0;
 						}
 						s++; break;
+                    case Instructions.CurveRadius:
+                        if (Train == null)
+                        {
+                            Function.Stack[s - 1] = 0.0;
+                        }
+                        else
+                        {
+                            int j = (int)Math.Round(Function.Stack[s - 1]);
+                            if (j < 0) j += Train.Cars.Length;
+                            if (j >= 0 & j < Train.Cars.Length)
+                            {
+                                Function.Stack[s - 1] = (Train.Cars[j].FrontAxle.Follower.CurveRadius + Train.Cars[j].RearAxle.Follower.CurveRadius) / 2;
+                            }
+                            else
+                            {
+                                Function.Stack[s - 1] = 0.0;
+                            }
+                        }
+                        break;
+                    case Instructions.FrontAxleCurveRadius:
+                        if (Train == null)
+                        {
+                            Function.Stack[s - 1] = 0.0;
+                        }
+                        else
+                        {
+                            int j = (int)Math.Round(Function.Stack[s - 1]);
+                            if (j < 0) j += Train.Cars.Length;
+                            if (j >= 0 & j < Train.Cars.Length)
+                            {
+                                Function.Stack[s - 1] = Train.Cars[j].FrontAxle.Follower.CurveRadius;
+                            }
+                            else
+                            {
+                                Function.Stack[s - 1] = 0.0;
+                            }
+                        }
+                        break;
+                    case Instructions.RearAxleCurveRadius:
+                        if (Train == null)
+                        {
+                            Function.Stack[s - 1] = 0.0;
+                        }
+                        else
+                        {
+                            int j = (int)Math.Round(Function.Stack[s - 1]);
+                            if (j < 0) j += Train.Cars.Length;
+                            if (j >= 0 & j < Train.Cars.Length)
+                            {
+                                Function.Stack[s - 1] = Train.Cars[j].RearAxle.Follower.CurveRadius;
+                            }
+                            else
+                            {
+                                Function.Stack[s - 1] = 0.0;
+                            }
+                        }
+                        break;
+                    case Instructions.CurveCant:
+                        if (Train == null)
+                        {
+                            Function.Stack[s - 1] = 0.0;
+                        }
+                        else
+                        {
+                            int j = (int)Math.Round(Function.Stack[s - 1]);
+                            if (j < 0) j += Train.Cars.Length;
+                            if (j >= 0 & j < Train.Cars.Length)
+                            {
+                                Function.Stack[s - 1] = Train.Cars[j].FrontAxle.Follower.CurveCant;
+                            }
+                            else
+                            {
+                                Function.Stack[s - 1] = 0.0;
+                            }
+                        }
+                        break;
+					case Instructions.Odometer:
+						Function.Stack[s] = 0.0;
+						s++;
+						break;
+					case Instructions.OdometerOfCar:
+						Function.Stack[s -1] = 0.0;
+						break;
 					case Instructions.TrainTrackDistanceToCar:
 						if (Train != null) {
 							int j = (int)Math.Round(Function.Stack[s - 1]);
@@ -666,6 +778,10 @@ namespace OpenBve {
 							Function.Stack[s] = 0.0;
 						}
 						s++; break;
+					case Instructions.Klaxon:
+						//Object Viewer doesn't actually have a sound player, so we can't test against it, thus return zero....
+						Function.Stack[s] = 0.0;
+						s++; break;
 					case Instructions.HasAirBrake:
 						if (Train != null) {
 							Function.Stack[s] = Train.Cars[Train.DriverCar].Specs.BrakeType == TrainManager.CarBrakeType.AutomaticAirBrake ? 1.0 : 0.0;
@@ -816,8 +932,8 @@ namespace OpenBve {
 						} else {
 							int n = (int)Math.Round(Function.Stack[s - 1]);
 							if (Train.Specs.Safety.Mode == TrainManager.SafetySystem.Plugin) {
-								if (n >= 0 & n < PluginManager.PluginPanel.Length) {
-									Function.Stack[s - 1] = (double)PluginManager.PluginPanel[n];
+								if (n >= 0 & n < PluginManager.CurrentPlugin.Panel.Length) {
+									Function.Stack[s - 1] = (double)PluginManager.CurrentPlugin.Panel[n];
 								} else {
 									Function.Stack[s - 1] = 0.0;
 								}
@@ -972,11 +1088,21 @@ namespace OpenBve {
 						} break;
 						// timetable
 					case Instructions.TimetableVisible:
-						Function.Stack[s] = Timetable.CustomVisible ? 0.0 : -1.0;
+						Function.Stack[s] = Timetable.CurrentTimetable == Timetable.TimetableState.Custom & Timetable.CustomTimetableAvailable ? 0.0 : -1.0;
 						s++; break;
 						// sections
 					case Instructions.SectionAspectNumber:
-						if (SectionIndex >= 0 & SectionIndex < Game.Sections.Length) {
+						if (IsPartOfTrain) {
+							int nextSectionIndex = Train.CurrentSectionIndex + 1;
+							if (nextSectionIndex >= 0 & nextSectionIndex < Game.Sections.Length) {
+								int a = Game.Sections[nextSectionIndex].CurrentAspect;
+								if (a >= 0 & a < Game.Sections[nextSectionIndex].Aspects.Length) {
+									Function.Stack[s] = (double)Game.Sections[nextSectionIndex].Aspects[a].Number;
+								} else {
+									Function.Stack[s] = 0;
+								}
+							}
+						} else if (SectionIndex >= 0 & SectionIndex < Game.Sections.Length) {
 							int a = Game.Sections[SectionIndex].CurrentAspect;
 							if (a >= 0 & a < Game.Sections[SectionIndex].Aspects.Length) {
 								Function.Stack[s] = (double)Game.Sections[SectionIndex].Aspects[a].Number;
@@ -995,6 +1121,12 @@ namespace OpenBve {
 			Function.LastResult = Function.Stack[s - 1];
 		}
 
+		// get postfix notation from infix notation
+		internal static string GetPostfixNotationFromInfixNotation(string Expression) {
+			string Function = GetFunctionNotationFromInfixNotation(Expression, true);
+			return GetPostfixNotationFromFunctionNotation(Function);
+		}
+		
 		// get function script from infix notation
 		internal static FunctionScript GetFunctionScriptFromInfixNotation(string Expression) {
 			string Function = GetFunctionNotationFromInfixNotation(Expression, true);
@@ -1361,6 +1493,8 @@ namespace OpenBve {
 				case "mod":
 				case "min":
 				case "max":
+                case "random":
+                case "randomint":
 					if (n == 2) {
 						return a[0] + " " + a[1] + " " + f;
 					} else {
@@ -1461,6 +1595,11 @@ namespace OpenBve {
 					// train
 				case "distance":
 				case "trackdistance":
+				case "curveradius":
+				case "frontaxlecurveradius":
+				case "rearaxlecurveradius":
+				case "curvecant":
+				case "odometer":
 				case "speed":
 				case "speedometer":
 				case "acceleration":
@@ -2092,6 +2231,18 @@ namespace OpenBve {
 							if (n >= Result.Instructions.Length) Array.Resize<Instructions>(ref Result.Instructions, Result.Instructions.Length << 1);
 							Result.Instructions[n] = Instructions.MathMod;
 							n++; s--; break;
+                        case "random":
+                            if (s < 2) throw new System.InvalidOperationException(Arguments[i] + " requires at least 2 arguments on the stack in function script " + Expression);
+                            if (n >= Result.Instructions.Length) Array.Resize<Instructions>(ref Result.Instructions, Result.Instructions.Length << 1);
+                            Result.Instructions[n] = Instructions.MathRandom;
+                            Interface.AddMessage(Interface.MessageType.Information, false, "" + Arguments[i] + " is only supported in OpenBVE versions 1.4.4.0 and above.");
+                            n++; s--; break;
+                        case "randomint":
+                            if (s < 2) throw new System.InvalidOperationException(Arguments[i] + " requires at least 2 arguments on the stack in function script " + Expression);
+                            if (n >= Result.Instructions.Length) Array.Resize<Instructions>(ref Result.Instructions, Result.Instructions.Length << 1);
+                            Result.Instructions[n] = Instructions.MathRandomInt;
+                            Interface.AddMessage(Interface.MessageType.Information, false, "" + Arguments[i] + " is only supported in OpenBVE versions 1.4.4.0 and above.");
+                            n++; s--; break;
 						case "floor":
 							if (s < 1) throw new System.InvalidOperationException(Arguments[i] + " requires at least 1 argument on the stack in function script " + Expression);
 							if (n >= Result.Instructions.Length) Array.Resize<Instructions>(ref Result.Instructions, Result.Instructions.Length << 1);
@@ -2297,6 +2448,25 @@ namespace OpenBve {
 							if (n >= Result.Instructions.Length) Array.Resize<Instructions>(ref Result.Instructions, Result.Instructions.Length << 1);
 							Result.Instructions[n] = Instructions.TrainTrackDistanceToCar;
 							n++; break;
+                        case "curveradiusindex":
+                            if (s < 1) throw new System.InvalidOperationException(Arguments[i] + " requires at least 1 argument on the stack in function script " + Expression);
+                            if (n >= Result.Instructions.Length) Array.Resize<Instructions>(ref Result.Instructions, Result.Instructions.Length << 1);
+                            Result.Instructions[n] = Instructions.CurveRadius;
+                            n++; break;
+						case "curvecantindex":
+							if (s < 1) throw new System.InvalidOperationException(Arguments[i] + " requires at least 1 argument on the stack in function script " + Expression);
+							if (n >= Result.Instructions.Length) Array.Resize<Instructions>(ref Result.Instructions, Result.Instructions.Length << 1);
+							Result.Instructions[n] = Instructions.CurveCant;
+							n++; break;
+						case "odometer":
+							if (n >= Result.Instructions.Length) Array.Resize<Instructions>(ref Result.Instructions, Result.Instructions.Length << 1);
+							Result.Instructions[n] = Instructions.Odometer;
+							n++; s++; if (s >= m) m = s; break;
+						case "odometerindex":
+							if (s < 1) throw new System.InvalidOperationException(Arguments[i] + " requires at least 1 argument on the stack in function script " + Expression);
+							if (n >= Result.Instructions.Length) Array.Resize<Instructions>(ref Result.Instructions, Result.Instructions.Length << 1);
+							Result.Instructions[n] = Instructions.OdometerOfCar;
+							n++; break;
 							// train: doors
 						case "doors":
 							if (n >= Result.Instructions.Length) Array.Resize<Instructions>(ref Result.Instructions, Result.Instructions.Length << 1);
@@ -2375,6 +2545,10 @@ namespace OpenBve {
 						case "emergencybrake":
 							if (n >= Result.Instructions.Length) Array.Resize<Instructions>(ref Result.Instructions, Result.Instructions.Length << 1);
 							Result.Instructions[n] = Instructions.EmergencyBrake;
+							n++; s++; if (s >= m) m = s; break;
+						case "klaxon":
+							if (n >= Result.Instructions.Length) Array.Resize<Instructions>(ref Result.Instructions, Result.Instructions.Length << 1);
+							Result.Instructions[n] = Instructions.Klaxon;
 							n++; s++; if (s >= m) m = s; break;
 						case "hasairbrake":
 							if (n >= Result.Instructions.Length) Array.Resize<Instructions>(ref Result.Instructions, Result.Instructions.Length << 1);
@@ -2461,6 +2635,10 @@ namespace OpenBve {
 						case "section":
 							if (n >= Result.Instructions.Length) Array.Resize<Instructions>(ref Result.Instructions, Result.Instructions.Length << 1);
 							Result.Instructions[n] = Instructions.SectionAspectNumber;
+							n++; s++; if (s >= m) m = s; break;
+						case "currentstate":
+							if (n >= Result.Instructions.Length) Array.Resize<Instructions>(ref Result.Instructions, Result.Instructions.Length << 1);
+							Result.Instructions[n] = Instructions.CurrentObjectState;
 							n++; s++; if (s >= m) m = s; break;
 							// default
 						default:
