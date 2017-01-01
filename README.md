@@ -1,6 +1,3 @@
-<html>
-    <head></head>
-    <body>
 # Heading
 
 ## test
@@ -13,6 +10,4 @@ Some test
 ```
 some code
 ```
-    </body>
-</html>
 
