@@ -1,4 +1,11 @@
-﻿using System;
+﻿// ╔═════════════════════════════════════════════════════════════╗
+// ║ CsvRwRouteParser.cs for the Route Checker                   ║
+// ╠═════════════════════════════════════════════════════════════╣
+// ║ This file cannot be used in the openBVE main program.       ║
+// ║ The file from the openBVE main program cannot be used here. ║
+// ╚═════════════════════════════════════════════════════════════╝
+
+using System;
 using System.Globalization;
 using System.Windows.Forms;
 using OpenBveApi;
@@ -1173,7 +1180,6 @@ namespace OpenBve {
 				} else {
 					// TODO: Detect multiple lines at same rail position?
 					// TODO: Doesn't ignore comment lines.
-					// TODO: Detect redundant commands like route.developerid.
 					p[n].TrackPosition = a;
 					p[n].Expression = Expressions[i];
 					int j = n;

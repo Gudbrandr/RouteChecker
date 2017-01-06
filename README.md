@@ -17,9 +17,10 @@ More details can be found on the [web site](https://gudbrandr.github.io/RouteChe
 * Provided the obvious default file name in the save dlg.
 * Suppressed warnings about variables which will always have their default values as this is expected.
 * Reinstated Train.Velocity as the docs say that it is used.
+* Reinstated Route.DeveloperID so that the author is credited for their work.
 * Cleaned up and removed unnecessary code.
 * Added the readme to the solution and started a change log.
-* Added the suggested workflow to the web site.
+* Added headers to files that didn't have them.
 
 ### 20170102
 * Added some documentation.
@@ -34,4 +35,5 @@ More details can be found on the [web site](https://gudbrandr.github.io/RouteChe
 ### 20161227
 * 20161227 Initial commit to GitHub. The code still runs when using OpenBVE 1.4. The sln uses C# 3.0 and targets .Net 3.5.
 * Changed .NET target version to 4.5.2.
+* Changed to C# 5.
 * Added .sln.

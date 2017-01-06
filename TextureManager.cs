@@ -1,4 +1,11 @@
-﻿using System;
+﻿// ╔═════════════════════════════════════════════════════════════╗
+// ║ TextureManager.cs for the Route Checker                     ║
+// ╠═════════════════════════════════════════════════════════════╣
+// ║ This file cannot be used in the openBVE main program.       ║
+// ║ The file from the openBVE main program cannot be used here. ║
+// ╚═════════════════════════════════════════════════════════════╝
+
+using System;
 using System.Drawing;
 using System.Drawing.Imaging;
 using OpenTK.Graphics.OpenGL;

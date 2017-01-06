@@ -301,10 +301,7 @@ namespace OpenBve
         		// -The latest constructs are used.
         		switch (WithSection){
         			case With.Route:
-        				// Dump "DeveloperID".
-	        			if(exp.Text.StartsWith("DeveloperID")){
-	        			   	break;
-	        			}
+        				// "DeveloperID" is ignored but retain it so that the author is credited.
         				sbRoute.Append("\t." + exp.Text + Environment.NewLine);
 	        			break;
         			case With.Train:
