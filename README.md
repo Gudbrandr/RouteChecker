@@ -39,6 +39,7 @@ To use Route Checker, place the application in the root directory of your OpenBV
 Route Checker is based heavily on Route Viewer, which is part of the OpenBVE toolset. Thanks to the following people who have worked on OpenBVE over the years:
 
 **OpenBVE**:
+
 - michelle
 - odakyufan
 - Anthony Bowden
