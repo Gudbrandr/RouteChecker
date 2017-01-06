@@ -360,17 +360,8 @@ namespace OpenBve {
 			internal AirBrakeHandle Handle;
 		}
 		internal struct TrainSpecs {
-//			internal double TotalMass;
 			internal ReverserHandle CurrentReverser;
 			internal double CurrentAverageSpeed;
-//			internal double CurrentAverageAcceleration;
-//			internal double CurrentAverageJerk;
-//			internal double CurrentAirPressure;
-//			internal double CurrentAirDensity;
-//			internal double CurrentAirTemperature;
-//			internal double CurrentElevation;
-//			internal bool SingleHandle;
-//			internal int PowerNotchReduceSteps;
 			internal int MaximumPowerNotch;
 			internal PowerHandle CurrentPowerNotch;
 			internal int MaximumBrakeNotch;
@@ -382,13 +373,6 @@ namespace OpenBve {
 			internal bool CurrentConstSpeed;
 			internal TrainSafety Safety;
 			internal TrainAirBrake AirBrake;
-//			internal double DelayPowerStart;
-//			internal double DelayPowerStop;
-//			internal double DelayBrakeStart;
-//			internal double DelayBrakeEnd;
-//			internal double DelayServiceBrake;
-//			internal double DelayEmergencyBrake;
-//			internal PassAlarmType PassAlarm;
 		}
 		// train
 		internal enum TrainState {
@@ -398,30 +382,11 @@ namespace OpenBve {
 			Pending = 0, Boarding = 1, Completed = 2
 		}
 		internal class Train {
-			//internal int TrainIndex;
 			internal TrainState State;
-			//internal bool Disposed;
-			//internal bool IsBogusTrain;
 			internal Car[] Cars;
-			//internal Coupler[] Couplers;
 			internal int DriverCar;
 			internal TrainSpecs Specs;
-			//internal TrainPassengers Passengers;
-			//internal int Station;
-			//internal bool StationFrontCar;
-			//internal bool StationRearCar;
-			//internal TrainStopState StationState;
-			//internal double StationArrivalTime;
-			//internal double StationDepartureTime;
-			//internal bool StationDepartureSoundPlayed;
-			//internal bool StationAdjust;
-			//internal double StationStopDifference;
-			//internal double[] RouteLimits;
-			//internal double CurrentRouteLimit;
-			//internal double CurrentSectionLimit;
 			internal int CurrentSectionIndex;
-			//internal double PretrainAheadTimetable;
-			//internal double InternalTimerTimeElapsed;
 		}
 
 #pragma warning restore 0649

@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Drawing;
 using System.Drawing.Imaging;
-using System.IO;
-using System.Windows.Forms;
 using OpenTK.Graphics.OpenGL;
 using GDIPixelFormat = System.Drawing.Imaging.PixelFormat;
 using GLPixelFormat = OpenTK.Graphics.OpenGL.PixelFormat;
@@ -56,7 +54,6 @@ namespace OpenBve
 		internal static Texture[] Textures = new Texture[16];
 		private const int MaxCyclesUntilUnload = 4;
 		private const double CycleInterval = 10.0;
-		private static double CycleTime = 0.0;
 
 		// use texture
 		internal enum UseMode { Normal, QueryDimensions, LoadImmediately }
@@ -157,49 +154,6 @@ namespace OpenBve
 			}
 		}
 
-//		internal static void ClearTextures()
-//		{
-//			UnuseAllTextures();
-//			//Textures = new Texture[1];
-//		}
-
-		// unregister texture
-//		internal static void UnregisterTexture(ref int TextureIndex)
-//		{
-//			if (TextureIndex == -1) return;
-//			if (TextureIndex > Textures.Length ||Textures[TextureIndex] == null)
-//			{
-//				TextureIndex = -1;
-//				return;
-//			}
-//			if (Textures[TextureIndex].Loaded)
-//			{
-//				GL.DeleteTextures(1, new int[] { Textures[TextureIndex].OpenGlTextureIndex });
-//			}
-//			Textures[TextureIndex] = null;
-//			TextureIndex = -1;
-//		}
-
-		// validate texture
-//		internal static void ValidateTexture(ref int TextureIndex)
-//		{
-//			int i = UseTexture(TextureIndex, TextureManager.UseMode.LoadImmediately);
-//			if (i == 0) TextureIndex = -1;
-//		}
-
-		// perform asynchronous operations
-//		internal static void PerformAsynchronousOperations()
-//		{
-//			for (int i = 0; i < Textures.Length; i++)
-//			{
-//				if (Textures[i] != null && Textures[i].Queried & !Textures[i].Loaded & Textures[i].Data == null)
-//				{
-//					LoadTextureData(i);
-//					System.Threading.Thread.Sleep(0);
-//				}
-//			}
-//		}
-
 		// load texture data
 		private static void LoadTextureData(int TextureIndex)
 		{
@@ -240,38 +194,6 @@ namespace OpenBve
 				Textures[TextureIndex].Data = null;
 			}
 		}
-
-		// update
-//		internal static void Update(double TimeElapsed)
-//		{
-//			CycleTime += TimeElapsed;
-//			if (CycleTime >= CycleInterval)
-//			{
-//				CycleTime = 0.0;
-//				for (int i = 0; i < Textures.Length; i++)
-//				{
-//					if (Textures[i] != null)
-//					{
-//						if (Textures[i].Loaded & !Textures[i].DontAllowUnload)
-//						{
-//							Textures[i].CyclesSurvived++;
-//							if (Textures[i].CyclesSurvived >= 2)
-//							{
-//								Textures[i].Queried = false;
-//							}
-//							if (Textures[i].CyclesSurvived >= MaxCyclesUntilUnload)
-//							{
-//								UnuseTexture(i);
-//							}
-//						}
-//						else
-//						{
-//							Textures[i].CyclesSurvived = 0;
-//						}
-//					}
-//				}
-//			}
-//		}
 
 		// register texture
 		internal static int RegisterTexture(string FileName, TextureWrapMode WrapModeX, TextureWrapMode WrapModeY, bool DontAllowUnload)

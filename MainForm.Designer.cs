@@ -1,12 +1,12 @@
 ﻿/*
  * Created by SharpDevelop.
- * User: Gary
+ * User: Gudbrandr
  * Date: 15/05/2009
  * Time: 3:14 PM
  * 
  * To change this template use Tools | Options | Coding | Edit Standard Headers.
  */
-//namespace RouteChecker
+
 namespace OpenBve
 {
 	partial class MainForm

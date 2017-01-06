@@ -116,6 +116,7 @@ namespace OpenBve {
 		}
 		private enum SoundType { World, TrainStatic, TrainDynamic }
 		private struct Sound {
+#pragma warning disable 0649
 			internal double TrackPosition;
 			internal int SoundIndex;
 			internal SoundType Type;
@@ -123,6 +124,7 @@ namespace OpenBve {
 			internal double Y;
 			internal double Radius;
 			internal double Speed;
+#pragma warning restore 0649
 		}
 		private struct Transponder {
 			internal double TrackPosition;
@@ -237,7 +239,9 @@ namespace OpenBve {
 			internal bool FogTransitionMode;
 			internal StructureData Structure;
 			internal SignalData[] SignalData;
+#pragma warning disable 0649
 			internal CompatibilitySignalData[] CompatibilitySignalData;
+#pragma warning restore 0649
 			internal int[] TimetableDaytime;
 			internal int[] TimetableNighttime;
 			internal World.Background[] Backgrounds;
@@ -246,12 +250,10 @@ namespace OpenBve {
 			internal Marker[] Markers;
 			internal int FirstUsedBlock;
 		}
-//		internal static RouteChecker.Program Program = null;
 
 		// parse route
 		internal static void ParseRoute(string FileName, bool IsRW, System.Text.Encoding Encoding, string TrainPath, string ObjectPath, string SoundPath, bool PreviewOnly, bool DikeReport, bool PoleReport, bool RailReport, bool WallReport) {
 			// initialize data
-//			string CompatibilityFolder = RouteChecker.Program.FileSystem.GetDataFolder("Compatibility");
 			string CompatibilityFolder = Program.FileSystem.GetDataFolder("Compatibility");
 			RouteData Data = new RouteData();
 			Data.BlockInterval = 25.0;

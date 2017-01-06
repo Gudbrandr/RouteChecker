@@ -1,6 +1,6 @@
 ﻿/*
  * Created by SharpDevelop.
- * User: Gary
+ * User: Gudbrandr
  * Date: 15/05/2009
  * Time: 3:14 PM
  * 
@@ -9,19 +9,15 @@
 using System;
 using System.Windows.Forms;
 
-//namespace RouteChecker
 namespace OpenBve
 {
 	/// <summary>
 	/// Class with program entry point.
 	/// </summary>
 	internal sealed class Program
-//	internal static class Program
 	{
 		// system
-//		internal static OpenBve.FileSystem FileSystem = null;
 		internal static FileSystem FileSystem = null;
-//		internal static OpenBve.Loading Loading = null;
 		
 		internal static double MinimumJumpToPositionValue =  0;
 		internal static bool CurrentlyLoading = false;

@@ -1,13 +1,12 @@
 ﻿/*
  * Created by SharpDevelop.
- * User: Gary
+ * User: Gudbrandr
  * Date: 15/05/2009
  * Time: 3:14 PM
  * 
  * To change this template use Tools | Options | Coding | Edit Standard Headers.
  */
 using System;
-using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 using System.IO;
@@ -15,8 +14,6 @@ using System.Diagnostics;
 using OpenBve;
 
 
-
-//namespace RouteChecker
 namespace OpenBve
 {
 	/// <summary>
@@ -66,7 +63,7 @@ namespace OpenBve
 						btnProcessRoute.Enabled = true;
 					}
 			    }else{
-			    	MessageBox.Show("Error getting railway folder from route file path.", "RouteChecker Error", MessageBoxButtons.OK , MessageBoxIcon.Error);
+			    	MessageBox.Show("Error getting railway folder from route file path.", "Route Checker Error", MessageBoxButtons.OK , MessageBoxIcon.Error);
 			    }
 				// Disable button, clear list.
 				btnExportCsv.Enabled = false;
@@ -106,9 +103,9 @@ namespace OpenBve
 				bool IsRW = string.Equals(System.IO.Path.GetExtension(strFilePath), ".rw", StringComparison.OrdinalIgnoreCase);
 				CsvRwRouteParser.ParseRoute(strFilePath, IsRW, System.Text.Encoding.UTF8, Application.StartupPath, this.ObjectFolder, this.SoundFolder, false, bDike, bPole, bRail, bWall);
 			}catch(Exception ex){
-				MessageBox.Show("RouteChecker has experienced the following error:\n\n" + ex.Message +
-				                "\n\nPlease make sure you are running RouteChecker in the OpenBVE directory.",
-				                "RouteChecker Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+				MessageBox.Show("Route Checker has experienced the following error:\n\n" + ex.Message +
+				                "\n\nPlease make sure you are running Route Checker in the OpenBVE directory.",
+				                "Route Checker Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
 			}
 	        
 			lvMessages.SmallImageList = new ImageList();
@@ -196,6 +193,7 @@ namespace OpenBve
 
 	        SaveFileDialog sfdRoute = new SaveFileDialog();
 			sfdRoute.Filter = "CSV files (*.csv)|*.csv" ;
+			sfdRoute.FileName = Path.GetFileNameWithoutExtension(strFilePath);
 			if(sfdRoute.ShowDialog() == DialogResult.OK){
 				path = sfdRoute.FileName;
 				this.ConvertToCVS(CsvRwRouteParser.rwExpressions, path);
@@ -240,7 +238,6 @@ namespace OpenBve
 		// CONVERSION TO CSV
 		
 		private enum With{Route, Train, Options, Structure, Texture, Cycle, Signal, Track};
-//		private static RouteChecker.MainForm.With WithSection;
 		private static MainForm.With WithSection;
 			
 		private void ConvertToCVS(CsvRwRouteParser.Expression[] Expressions, string path)
@@ -304,8 +301,8 @@ namespace OpenBve
         		// -The latest constructs are used.
         		switch (WithSection){
         			case With.Route:
+        				// Dump "DeveloperID".
 	        			if(exp.Text.StartsWith("DeveloperID")){
-	        				// Dump "DeveloperID".
 	        			   	break;
 	        			}
         				sbRoute.Append("\t." + exp.Text + Environment.NewLine);
@@ -325,8 +322,6 @@ namespace OpenBve
 	        				sbTrain.Append("\t." + strRun[0].Replace("Rail", "Run") + ".Set " + strRun[1] + Environment.NewLine);
 	        				break;
 	        			// Dump unused commands.
-	        			}else if(exp.Text.StartsWith("Velocity")){
-	        				break;
 	        			}else if(exp.Text.StartsWith("Acceleration")){
 	        				break;
 	        			}else if(exp.Text.StartsWith("Station")){
@@ -394,7 +389,7 @@ namespace OpenBve
 			
 		}
 		
-		// Insert $Chr() statements.s
+		// Insert $Chr() statements
 		private string InsertChr(string str)
 		{
 			string strNew;
