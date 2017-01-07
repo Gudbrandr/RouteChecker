@@ -19,12 +19,13 @@ The amount of information provided in Route Checker's report can be a bit overwh
 * Start by processing the route with the dike, pole, rail and wall reports turned off.
 * Correct the errors and warnings that aren't related to these elements.
 * Turn on one of the additional reports (dike, pole, rail, wall) and reprocess the route.
-* Work through the errors until there are no more.
+* Work through the report until there are no more errors, using the information entries to help you track where the problems occur. 
 * Turn off the report you've been working on and select another. 
-* Work through the new report until there are no more errors, using the information entries to help you track where the problems occur. 
+* Work through the new report until there are no more errors. 
 * Continue in this fashion until you've cleared all four reports.
 * Turn on all four reports and check that there are no errors or warnings reported.
-* Finally, convert the route to CSV if you wish.
+* If any errors are reported, return to step three and work through the process again.
+* If you started with an RW route, you can now convert the route to CSV if you wish.
 
 ## Example
 
@@ -38,14 +39,14 @@ To use Route Checker, place the application in the root directory of your OpenBV
 
 Route Checker is based heavily on Route Viewer, which is part of the OpenBVE toolset. Thanks to the following people who have worked on OpenBVE over the years:
 
-**OpenBVE**:
+**OpenBVE**
 
 - michelle
 - odakyufan
 - Anthony Bowden
 - Paul Sladen
 
-**OpenTK Port and Continuing Development**:
+**OpenTK Port and Continuing Development**
 
 - Christopher Lees
 - Jakub Vanek
