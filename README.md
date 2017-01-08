@@ -1,6 +1,6 @@
-# Open BVE Route Checker
+# OpenBVE Route Checker
 
-Route Checker is an add-on tool for the [OpenBVE](http://openbve-project.net/) train simulator.
+Route Checker is an add-on tool for the [OpenBVE](http://openbve-project.net/) train simulator. [test](./test.md)
 
 ![Route Checker in action.](./images/rc.png)
 
