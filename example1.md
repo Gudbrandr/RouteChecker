@@ -12,7 +12,7 @@ These are the same errors that are reported by Route Viewer. There are 3 problem
 54550@form(0,1,0)@form(2,3,0)@freeobj(1,40)@freeobj(2,39))@freeobj(1,65,1.75)
 ```
 
-You can see that there's an extra closing parenthesis in the second freeobj statement, after the number 39. The keen-eyed among you may have noticed that this is actually visible in the warning. Remove it, save the file and click `Process Route` again. The first error and the final warning are both removed.
+You can see that there's an extra closing parenthesis in the second `freeobj` statement, after the number 39. The keen-eyed among you may have noticed that this is actually visible in the warning. Remove it, save the file and click `Process Route` again. The first error and the final warning are both removed.
 
 Now find line 702 in the route file.
 
@@ -66,7 +66,7 @@ So you can remove the `dikeend` statement for dike 1 at line 326.
 
 ```
 
-Reprocessing now shows that the error has been corrected. Since the next error refers to a `wallend` statement, turn off the rail report, turn on the wall report and reprocess.
+Reprocessing now shows that the error has been corrected.
 
 The dike report has also found some problems that weren't previously reported, so let's deal with those.
 
@@ -78,7 +78,7 @@ Looking at line 355 of the route, you can see the following:
 5975@railend(1,0,-0.005)@dikeend(1)@wallend(1)@dikeend(1)@dike(0,-1,2)
 ```
 
-There are 2 statements ending dike 1. Since there are no other errors that suggest that it might have been the authors intention to end a dike other than dike 1, you can remove one of these stataments.
+There are 2 statements ending dike 1. Since there are no other errors that suggest that it might have been the author's intention to end a dike other than dike 1, you can remove one of these statements.
 
 ```
 5975@railend(1,0,-0.005)@dikeend(1)@wallend(1)@dike(0,-1,2)
@@ -121,7 +121,7 @@ That leaves 3 warnings, the first of which appears to refer to a wall, so let's 
 
 ![Example 7.](./images/ex7.png)
 
-To see what's happening to rail 2, turn on the rail report as well as the wall report and reprocess. Use the `Next Error` button to skip down to the warning. Rail 1 isn't mentioned in nearby rows but, if you scroll up or make the window taller, you'll see it 36 rows higher up, ending in line 546 of the route.
+To see what's happening to rail 2, turn on the rail report as well as the wall report and reprocess. Use the `Next Error` button to skip down to the warning. Rail 1 isn't mentioned in nearby rows but, if you scroll up or make the window taller, you'll see it 36 rows higher up, ending on line 546 of the route.
 
 ![Example 8.](./images/ex8.png)
 
@@ -133,7 +133,7 @@ Start Route Viewer, press F7 and load the Desert Express US_day.rw file that you
 20400@wall(1,-1,1)
 ```
 
-That number at the start of the line is the distance from the start of the route, in metres, so this wall is 20400 metres along the route. Go back to Route Viewer and on the main screen type 20400 and press `Return`. You will see the numbers appear at the top left of the screen, under the red error message. You'll see that the prompt "Jump to track position" appears at that location once you start typing.
+That number at the start of the line is the distance from the start of the route, in metres, so this wall is 20400 metres along the route. Go back to Route Viewer and on the main screen type 20400 and press `Return`. You will see the numbers appear at the top left of the screen, under the red error message. You'll also see that the prompt "Jump to track position" appears at that location once you start typing.
 
 ![Example 9.](./images/ex9.png)
 
@@ -141,7 +141,7 @@ After you press `Return`, the train will be moved to the requested location alon
 
 ![Example 10.](./images/ex10.png)
 
-There isn't anything wall-like visible at this location. The second number in the `wall` command, -1, means that the structre should be on the left of the rail. You can move back and forward along the line using the `W` and `S` keys but that doesn't reveal anything significant in this location. There also aren't any other rails visible here. We're sitting on rail 0 so maybe that's the rail that should be used by the `wall` statement. Change the rail number, i.e. the first digit, to 0 in the route file.
+There isn't anything wall-like visible at this location. The second number in the `wall` command, -1, means that the structure should be on the left of the rail. You can move back and forward along the line using the `W` and `S` keys but that doesn't reveal anything significant in this location. There also aren't any other rails visible here. We're sitting on rail 0 so maybe that's the rail that should be used by the `wall` statement. Change the rail number, i.e. the first digit, to 0 in the route file.
 
 ```
 20400@wall(0,-1,1)
@@ -201,10 +201,10 @@ Reprocessing the route reveals no more warnings. Now turn on all reports and rep
 
 ![Example 17.](./images/ex17.png)
 
-Lovely! That leaves one final task. Conversion to CSV. CLick the `Export CSV` button at the bottom of the window. A default name is provided. Change it if you wish and hit `Save`. You can load the CSV into Route Checker and run the reports if you want to check that it converted correctly. The new route should work correctly and without generating errors in Route Viewer or OpenBVE.
+Lovely! That leaves one final task. Conversion to CSV. Click the `Export CSV` button at the bottom of the window. A default name is provided. Change it if you wish and hit `Save`. You can load the CSV into Route Checker and run the reports if you want to check that it converted correctly. The new route should work correctly and without generating errors in Route Viewer or OpenBVE.
 
 ## Postscript
 
-The route still isn't perfect. The power line on the left of the tracks now  disappears into the wall we replaced and reapperas at the far end. Shortly thereafter it pitches up as if climbing over an obstacle (our wall?). It restarts abruptly about 1000m further down the track. This looks like a design flaw. It's still a great route, though, and the glitch doesn't detract from the overall. I'm still impressed at the quality of the work that deigners were able to create with minimal tooling, especiallyt in the early days of BVE. Maybe I'll look at that in another tutorial.
+The route still isn't perfect. The power line on the left of the tracks now  disappears into the wall we replaced and reappears at the far end. Shortly thereafter it pitches up as if climbing over an obstacle (our wall?). It restarts abruptly about 1000m further down the track. This looks like a design flaw. It's still a great route, though, and the glitch doesn't detract from the overall enjoyment of driving it. I'm still impressed at the quality of the work that deigners were able to create with minimal tooling, especially in the early days of BVE. Maybe I'll look at that in another tutorial.
 
 Have fun converting routes and don't forget to make them available for others to enjoy!
