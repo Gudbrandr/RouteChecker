@@ -1,6 +1,6 @@
 # OpenBVE Route Checker
 
-Route Checker is an add-on tool for the [OpenBVE](http://openbve-project.net/) train simulator. [test](./test.md)
+Route Checker is an add-on tool for the [OpenBVE](http://openbve-project.net/) train simulator.
 
 ![Route Checker in action.](./images/rc.png)
 
@@ -29,11 +29,15 @@ The amount of information provided in Route Checker's report can be a bit overwh
 
 ## Example
 
-Coming soon.
+I have provided a [fully worked example of converting a route](./example1.md).
 
 ## Usage
 
 To use Route Checker, place the application in the root directory of your OpenBVE installation, alongside OpenBVE, Route Viewer, Train Editor and the other tools. Route Checker will not run from anywhere else as it requires access to some core OpenBVE files.
+
+## Building Route Checker
+
+You will find the details of [how to build Route Checker from source](https://github.com/Gudbrandr/RouteChecker/wiki/Building-Route-Checker-from-source) in the [wiki](https://github.com/Gudbrandr/RouteChecker/wiki).
 
 ## Credits
 
