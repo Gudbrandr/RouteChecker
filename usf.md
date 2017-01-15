@@ -70,7 +70,7 @@ color 160,80,0
 
 Do the same for the nighttime scenario version in \Night. Its unclear why this occurred. It could be the result of OpenBVE doing things differently to older versions of BVE. You should now be free of errors in objects.
 
-Having done the work, I thought I'd try and package it using the new packaging features of OpenBVE 1.5. It's necessary to package the trains separately. Here they are for anyone who'd like to try out the converted and corrected version.
+Having done the work, I thought I'd try and package it using the new packaging features of OpenBVE 1.5. It's necessary to package the trains separately. Here they are for anyone who'd like to try out the converted and corrected version. You'll need to right-click and "Save link as..." to get around GitHub's limitations.
 
 [US Desert Freight route package](./Packages/USFreightRoute.zip)
 
