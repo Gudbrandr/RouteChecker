@@ -16,7 +16,7 @@ More details can be found on the [web site](https://gudbrandr.github.io/RouteChe
 * Changed the directory structure to match OpenBVE as I don't see much value in being able to build it separately, given the dependencies.
 * Removed unused images.
 * Changed the GUI to pull the icon and images from the assets directory
-* Removed the readme from the project again.
+* Removed the .sln from the project again.
 
 ### 20170106
 * Fixed an omission that caused comments to be repeated when converting to CSV.
