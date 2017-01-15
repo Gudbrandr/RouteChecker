@@ -205,6 +205,8 @@ Lovely! That leaves one final task. Conversion to CSV. Click the `Export CSV` bu
 
 ## Postscript
 
-The route still isn't perfect. The power line on the left of the tracks now  disappears into the wall we replaced and reappears at the far end. Shortly thereafter it pitches up as if climbing over an obstacle (our wall?) and disappears into thin air. It restarts abruptly about 1000m further down the track. This looks like a design flaw. It's still a great route, though, and the glitch doesn't detract from the overall enjoyment of driving it. I'm still impressed at the quality of the work that deigners were able to create with minimal tooling, especially in the early days of BVE. Maybe I'll look at that in another tutorial.
+The route still isn't perfect. For example, the power line on the left of the tracks now disappears into the wall we replaced and reappears at the far end. Shortly thereafter it pitches up as if climbing over an obstacle (our wall?) and disappears into thin air. It restarts abruptly about 1000m further down the track. This looks like a design flaw. Maybe I'll look at that in another tutorial. It's still a great route, though, and the glitch doesn't detract from the overall enjoyment of driving it. I'm still impressed at the quality of the work that deigners were able to create with minimal tooling, especially in the early days of BVE.
+
+I have also fixed some other bugs not shown above and created packages for the route and its trains using the new package features. You can find those [here](./usf.md) if you want to compare your results or just enjoy the route.
 
 Have fun converting routes and don't forget to make them available for others to enjoy!
