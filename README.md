@@ -41,6 +41,10 @@ To use Route Checker, place the application in the root directory of your OpenBV
 
 You will find the details of [how to build Route Checker from source](https://github.com/Gudbrandr/RouteChecker/wiki/Building-Route-Checker-from-source) in the [wiki](https://github.com/Gudbrandr/RouteChecker/wiki).
 
+## Release Binaries
+
+You can download Route Checker 1.4.5 compiled for Windows and OpenBVE 1.4.5 [here](https://github.com/Gudbrandr/RouteChecker/releases/download/v1.4.5.0/RouteChecker-1.4.5win.zip). The source code is also available as [zip](https://github.com/Gudbrandr/RouteChecker/archive/v1.4.5.0.zip) and [tar.gz](https://github.com/Gudbrandr/RouteChecker/archive/v1.4.5.0.tar.gz) files
+
 ## Credits
 
 Route Checker is based heavily on Route Viewer, which is part of the OpenBVE toolset. Thanks to the following people who have worked on OpenBVE over the years:
