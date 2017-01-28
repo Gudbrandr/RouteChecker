@@ -137,7 +137,7 @@ That number at the start of the line is the distance from the start of the route
 
 ![Example 9.](./images/ex9.png)
 
-After you press `Return`, the train will be moved to the requested location along the route.
+After you press `Return`, you will be moved to the requested location along the route.
 
 ![Example 10.](./images/ex10.png)
 
