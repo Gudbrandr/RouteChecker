@@ -1,4 +1,5 @@
 [![GitHub version](https://badge.fury.io/gh/Gudbrandr%2FRouteChecker.svg)](https://badge.fury.io/gh/Gudbrandr%2FRouteChecker)
+[![GitHub release](https://img.shields.io/github/release/qubyte/rubidium.svg)]()
 
 # RouteChecker
 
