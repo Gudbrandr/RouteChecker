@@ -1,3 +1,5 @@
+[![GitHub version](https://badge.fury.io/gh/Gudbrandr%2FRouteChecker.svg)](https://badge.fury.io/gh/Gudbrandr%2FRouteChecker)
+
 # RouteChecker
 
 Route Checker is an add-on tool for the [OpenBVE](http://openbve-project.net/) train simulator.
