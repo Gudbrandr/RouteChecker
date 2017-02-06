@@ -1,4 +1,4 @@
-[![GitHub release](https://img.shields.io/github/release/Gudbrandr/RouteChecker.svg)]()
+[![GitHub release](https://img.shields.io/github/release/Gudbrandr/RouteChecker.svg)](https://github.com/Gudbrandr/RouteChecker/releases/)
 
 # RouteChecker
 
